@@ -66,6 +66,10 @@ Print_number_args:
 	bgt $t0, 3, Illegal_arguments 
 	blt $t0, 2, Illegal_arguments	
 
+	lw $t1, arg1
+	lw $t2, arg2
+	lw $t3, arg3
+
 	j Exit
 
 Illegal_arguments:
