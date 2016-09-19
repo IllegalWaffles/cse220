@@ -6,6 +6,8 @@
 .align 2
 numargs: .word 0
 arg1: .word 0
+arg2s: .asciiz "ARG2: "
+arg3s: .asciiz "ARG3: "
 arg2: .word 0
 arg3: .word 0
 Err_string: .asciiz "ARGUMENT ERROR"
@@ -106,13 +108,45 @@ main:
 	j Exit_illegal_arguments
 	
 Part2:
-	#pstring(Part2_string)
-	#pchar($s2)
+	
 	blt $s0, 3, Exit_illegal_arguments
 	
-		
+	# Build Arg2
+	lw $a0, arg2
+	jal BuildWord
 
+	# Print Arg2
+	move $t0, $v0	# Save our built word
 	
+	la $a0, arg2s
+	li $v0, 4
+	syscall
+	
+	move $a0, $t0	# Recall our built word
+	jal PrintWord
+	
+	move $s2, $t0	# Save what we built for arg2
+	pstring(endl)
+	
+	# Build Arg3
+	lw $a0, arg3
+	
+	jal BuildWord
+	
+	# Print Arg3
+	
+	move $t0, $v0	# Save our built word
+	
+	la $a0, arg3s
+	li $v0, 4
+	syscall
+	
+	move $a0, $t0	# Recall our built word
+	jal PrintWord
+	
+	move $s3, $t0 	# Save what we built for arg3
+	
+	jal HammingDistance
 	
 	j Exit_clean
 
@@ -142,4 +176,64 @@ loop:	lb $t0, ($a0)		# Loads the next byte into $t2
 exit:
 	jr $ra
 	
+BuildWord:
+	move $t0, $a0	
+	lb $t1, 0($t0)
 	
+	lb $t2, 1($t0)
+	sll $t2, $t2, 8
+	or $t1, $t1, $t2
+	
+	lb $t2, 2($t0)
+	sll $t2, $t2, 16
+	or $t1, $t1, $t2
+	
+	lb $t2, 3($t0)
+	sll $t2, $t2, 24
+	or $t1, $t1, $t2
+	move $v0, $t1
+
+	jr $ra
+	
+PrintWord:
+	
+	move $t0, $a0
+
+	pbin($t0)
+	pstring(space)
+	
+	move $a0, $t0
+	li $v0, 34
+	syscall
+	pstring(space)
+	
+	pint($t0)
+	pstring(space)
+	
+	move $a0, $t0
+	li $v0, 100
+	syscall
+	pstring(space)
+	
+	move $a0, $t0
+	li $v0, 101
+	syscall
+
+	jr $ra
+	
+HammingDistance:
+	# Expects a number in $a0 and $a1
+	# xor the numbers
+	# count the number of 1's
+	# that's hamming distance
+	# Needs for loop of 32 
+	
+	xor $t0, $a0, $a1
+	li $t1, 0
+	
+loop_h:	bge $t1, 32, exit_h
+	pint($t1)
+	addi $t1, $t1, 1
+	j loop_h
+	
+exit_h:	jr $ra
