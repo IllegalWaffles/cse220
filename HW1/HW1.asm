@@ -10,10 +10,9 @@ arg2: .word 0
 arg3: .word 0
 Err_string: .asciiz "ARGUMENT ERROR"
 Goodbye_string: .asciiz "Goodbye..."
-Numargs_string: .asciiz "Number of arguments: "
 Part2_string: .asciiz "Part 2:"
 Part3_string: .asciiz "Part 3:"
-newline: .asciiz "\n"
+endl: .asciiz "\n"
 space: .asciiz " "
 
 # Helper macro for grabbing command line arguments
@@ -40,62 +39,71 @@ space: .asciiz " "
 .end_macro
 
 # Prints a string to console
-.macro print_string (%string)
+.macro pstring (%string)
 	la $a0, %string
 	li $v0, 4
 	syscall
 .end_macro
 
 # Prints an int to the console
-.macro print_int (%reg)
+.macro pint (%reg)
 	move $a0, %reg
 	li $v0, 1
 	syscall
 .end_macro
 
+# Prints a number as a binary number
+.macro pbin (%reg)
+	move $a0, %reg
+	li $v0, 35
+	syscall
+.end_macro
+
 # Exits the program with a specified string
 .macro exit_with_string (%string)
-	print_string(%string)
+	pstring(%string)
 	li $v0, 10
 	syscall
 .end_macro
 
 .text
-.globl main
+.globl main # MAIN
 main:
 
-	load_args() # Only do this once
-	move $s0, $a0 # Hold on to the number of arguments
+	load_args() 	# Only do this once
+	move $s0, $a0 	# Hold on to the number of arguments
 
-Print_number_args:	
+	bgt $s0, 3, Illegal_arguments_exit 
+	blt $s0, 2, Illegal_arguments_exit
 	
-	print_string(Numargs_string)
-	print_int($s0)
-	print_string(newline)
-
-	bgt $s0, 3, Illegal_arguments 
-	blt $s0, 2, Illegal_arguments	
-
-	la $a0, arg1
-	jal Find_length
-
-	print_string(arg1)
-
+	lw $a0, arg1
+	jal Strlen	# Determine length of arg1
+	
+	move $s1, $v0	# $s1 now holds length of arg1
+	
+	bne $s1, 1, Illegal_arguments_exit 
+	
 	j Exit
 
-Illegal_arguments:
+# Exit labels
+Illegal_arguments_exit:
 	exit_with_string(Err_string)
 
 Exit:	
 	exit_with_string(Goodbye_string)
 	
-Find_length: # Expects the address of the word to be loaded into $a0
-	li $v0, 0
-loop:	
-	lb $t0, ($a0)
-	beqz $t0, exit
 	
+# Functions
+Strlen:
+		 		# $a0 holds the address of our word
+	li $v0, 0 		# $v0 is our counter variable
 	
-	exit:
+loop:	lb $t0, ($a0)		# Loads the next byte into $t2
+	beqz $t0, exit 		# if it's a null terminator, jump to the exit
+	addi $a0, $a0, 1 	# increment our string pointer
+	addi $v0, $v0, 1 	# increment our counter
+	j loop			# LOOP!
+exit:
 	jr $ra
+	
 	
