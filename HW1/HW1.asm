@@ -6,11 +6,11 @@
 .align 2
 numargs: .word 0
 arg1: .word 0
-arg2s: .asciiz "ARG2: "
-arg3s: .asciiz "ARG3: "
 arg2: .word 0
 arg3: .word 0
 Err_string: .asciiz "ARGUMENT ERROR"
+arg2s: .asciiz "ARG2: "
+arg3s: .asciiz "ARG3: "
 Part2_string: .asciiz "Part 2: "
 Part3_string: .asciiz "Part 3: "
 endl: .asciiz "\n"
@@ -92,11 +92,6 @@ main:
 	
 	bne $s1, 1, Exit_illegal_arguments
 	
-	# A = 65
-	# a = 97
-	# R = 82
-	# r = 114
-	
 	lw $t0, arg1
 	lb $s2, ($t0)	# $s2 holds arg1
 	
@@ -167,17 +162,15 @@ Part2:
 
 Part3:
 
-	bgt $s0, 2, Exit_illegal_arguments
+	bgt $s0, 2, Exit_illegal_arguments	
+
+	lw $a0, arg2
+	jal Hash
 	
-	li $v0, 11
-	lw $t0, arg2	# Loads the entirety of arg2
-loop1:	
-	lb $t1, ($t0)
-	beqz $t1, exit2
-	move $a0, $t1
+	move $a0, $v0
+	li $v0, 1
 	syscall
-	j loop1	# LOOP!
-exit2:
+	
 	j Exit_clean
 
 # Exit labels
@@ -190,6 +183,7 @@ Exit_clean:
 	
 	
 # Functions
+#############################################################################
 Strlen:
 		 		# $a0 holds the address of our word
 	li $v0, 0 		# $v0 is our counter variable
@@ -201,7 +195,7 @@ loop:	lb $t0, ($a0)		# Loads the next byte into $t2
 	j loop			# LOOP!
 exit:
 	jr $ra
-	
+#############################################################################
 BuildWord:
 	move $t0, $a0	
 	lb $t1, 0($t0)
@@ -220,7 +214,7 @@ BuildWord:
 	move $v0, $t1
 
 	jr $ra
-	
+#############################################################################
 PrintWord:
 	
 	move $t0, $a0
@@ -246,18 +240,13 @@ PrintWord:
 	syscall
 
 	jr $ra
-	
+#############################################################################
 HammingDistance:
-	# Expects a number in $a0 and $a1
-	# xor the numbers
-	# count the number of 1's
-	# Needs for loop of 32 
 	
 	move $t6, $a0
 	move $t7, $a1
 	
 	xor $t0, $t6, $t7	# XOR'd the numbers
-	
 	
 	li $t1, 0		# General counter
 	li $t2, 0		# Counter for xor bits
@@ -265,7 +254,7 @@ HammingDistance:
 loop_h:	bgt $t1, 31, exit_h 	# Loop counts from 0-31, to get each bit
 
 	srlv $t3, $t0, $t1 	# Shift some bits over
-	andi $t4, $t3, 0x1	# Mask for only the first bit
+	andi $t4, $t3, 1	# Mask for only the first bit
 	bne $t4, 1, zero
 	addi $t2, $t2, 1
 zero: 
@@ -273,4 +262,42 @@ zero:
 	j loop_h 		# LOOP!
 
 exit_h:	move $v0, $t2
+	jr $ra
+#############################################################################
+Hash:
+				# $a0 holds the word we wanna hash
+	move $t0, $a0		# Move it into $t0
+	li $t2, 0		# $t2 will be our sum variable
+	
+	li $t7, 48		# $t7 holds the value for '0'
+	li $t8, 57		# $t8 holds the value for '9'
+	li $t9, 10		# $t9 holds 10
+	
+loop1:	
+	lb $t1, ($t0)		# Get the next char
+	beqz $t1, exit2		# If it's a null terminator, that's the end of the string
+	
+	blt $t1, $t7, exit2	
+	bgt $t1, $t8, exit2	# Break
+	
+	sub $t3, $t1, $t7 	# char - '0'
+	
+	mult $t2, $t9		# sum * 10
+	mflo $t4		
+	
+	add $t2, $t3, $t4	# (sum * 10) + (char - '0')
+	
+	addi $t0, $t0, 1	# Increment pointer
+	j loop1			# LOOP!
+exit2:
+	move $v0, $t2
+	jr $ra
+#############################################################################
+TrueBits:			# Returns the number of bits that are true in the byte loaded into #a0
+	
+
+
+
+
+
 	jr $ra
