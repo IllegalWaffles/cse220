@@ -11,11 +11,11 @@ arg3s: .asciiz "ARG3: "
 arg2: .word 0
 arg3: .word 0
 Err_string: .asciiz "ARGUMENT ERROR"
-Goodbye_string: .asciiz "\n(clean exit)"
 Part2_string: .asciiz "Part 2: "
 Part3_string: .asciiz "Part 3: "
 endl: .asciiz "\n"
 space: .asciiz " "
+hamming_distance: .asciiz "Hamming Distance: "
 
 # Helper macro for grabbing command line arguments
 .macro load_args
@@ -146,7 +146,22 @@ Part2:
 	
 	move $s3, $t0 	# Save what we built for arg3
 	
+	move $a0, $s2
+	move $a1, $s3
+	
 	jal HammingDistance
+	
+	move $t0, $v0
+	
+	pstring(endl)
+	
+	li $v0, 4
+	la $a0, hamming_distance
+	syscall
+	
+	move $a0, $t0
+	li $v0, 1
+	syscall
 	
 	j Exit_clean
 
@@ -160,7 +175,8 @@ Exit_illegal_arguments:
 	exit_with_string(Err_string)
 
 Exit_clean:	
-	exit_with_string(Goodbye_string)
+	li $v0, 10
+	syscall
 	
 	
 # Functions
@@ -225,15 +241,26 @@ HammingDistance:
 	# Expects a number in $a0 and $a1
 	# xor the numbers
 	# count the number of 1's
-	# that's hamming distance
 	# Needs for loop of 32 
 	
-	xor $t0, $a0, $a1
-	li $t1, 0
+	move $t6, $a0
+	move $t7, $a1
 	
-loop_h:	bge $t1, 32, exit_h
-	pint($t1)
-	addi $t1, $t1, 1
-	j loop_h
+	xor $t0, $t6, $t7	# XOR'd the numbers
 	
-exit_h:	jr $ra
+	
+	li $t1, 0		# General counter
+	li $t2, 0		# Counter for xor bits
+	
+loop_h:	bgt $t1, 31, exit_h 	# Loop counts from 0-31, to get each bit
+
+	srlv $t3, $t0, $t1 	# Shift some bits over
+	andi $t4, $t3, 0x1	# Mask for only the first bit
+	bne $t4, 1, zero
+	addi $t2, $t2, 1
+zero: 
+	addi $t1, $t1, 1	# Increment counter
+	j loop_h 		# LOOP!
+
+exit_h:	move $v0, $t2
+	jr $ra
