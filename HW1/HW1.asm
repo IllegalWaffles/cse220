@@ -166,8 +166,18 @@ Part2:
 	j Exit_clean
 
 Part3:
-	pstring(Part3_string)
-	pchar($s2)
+
+	bgt $s0, 2, Exit_illegal_arguments
+	
+	li $v0, 11
+	lw $t0, arg2	# Loads the entirety of arg2
+loop1:	
+	lb $t1, ($t0)
+	beqz $t1, exit2
+	move $a0, $t1
+	syscall
+	j loop1	# LOOP!
+exit2:
 	j Exit_clean
 
 # Exit labels
