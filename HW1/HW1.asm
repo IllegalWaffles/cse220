@@ -180,18 +180,39 @@ Part3:
 	li $v0, 40
 	syscall
 	
-loop:	# Generate random value
-	# Check if it's a power of 2
-	# Check if it's < 64
-	# Is both are true, branch to exit
-	# Otherwise, check if its even
-	# Check if it's odd
-	# Check if it's div by 2
-	# Check if it's div by 4
-	# Check if it's div by 8
-	# (Incrememnt a separate counter for each of these conditions)
-	# Back to loop
-exit:	# Print the collected data 
+	
+	
+loop:	li $v0, 42
+	li $a1, 1023
+	syscall 		# Generate random value
+	addi $t0, $a0, 1
+	pint($t0)
+	pstring(space)
+	pbin($t0)
+	pstring(endl)
+	move $a0, $t0		# Check if it's a power of 2
+	jal TrueBits
+	move $t1, $v0
+	blt $t0, 64, cond2			
+cond2:	beq $t1, 1, exit
+				# Check if it's < 64
+	
+				# Is both are true, branch to exit
+
+				# Otherwise, check if its even
+				
+				# Check if it's odd
+				
+				# Check if it's div by 2
+				
+				# Check if it's div by 4
+				
+				# Check if it's div by 8
+				
+				# (Incrememnt a separate counter for each of these conditions)
+	
+	j loop			# Back to loop
+exit:				# Print the collected data 
 	
 	j Exit_clean
 
@@ -304,7 +325,7 @@ loop_h:
 	add $t2, $t3, $t4	# (sum * 10) + (char - '0')
 	
 	addi $t0, $t0, 1	# Increment pointer
-	j loop_h			# LOOP!
+	j loop_h		# LOOP!
 exit_h:
 	move $v0, $t2
 	jr $ra
