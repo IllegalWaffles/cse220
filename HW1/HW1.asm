@@ -190,26 +190,26 @@ loop:	li $v0, 42
 	pstring(space)
 	pbin($t0)
 	pstring(endl)
-	move $a0, $t0		# Check if it's a power of 2
+	move $a0, $t0		# Check if it's a power of 2 AND < 64
 	jal TrueBits
 	move $t1, $v0
-	blt $t0, 64, cond2			
-cond2:	beq $t1, 1, exit
-				# Check if it's < 64
-	
-				# Is both are true, branch to exit
+	bge $t0, 64, true			
+	beq $t1, 1, exit	# Is both are true, branch to exit
+true:	
+	li $t7, 8		# Check if it's div by 8
+	div $t0, $t7		
+	mfhi $t2
+	beqz $t2, div8	
+	li $t7, 4
+	div $t0, $t7			# Check if it's div by 4
 
-				# Otherwise, check if its even
+
+div8:				
+div4:				# Check if it's div by 2
+div2:				# We will know if it's even or odd based on this
 				
-				# Check if it's odd
-				
-				# Check if it's div by 2
-				
-				# Check if it's div by 4
-				
-				# Check if it's div by 8
-				
-				# (Incrememnt a separate counter for each of these conditions)
+	j loop
+odd:				
 	
 	j loop			# Back to loop
 exit:				# Print the collected data 
@@ -232,10 +232,10 @@ Strlen:
 	li $v0, 0 		# $v0 is our counter variable
 	
 loop_l:	lb $t0, ($a0)		# Loads the next byte into $t2
-	beqz $t0, exit_l 		# if it's a null terminator, jump to the exit
+	beqz $t0, exit_l 	# if it's a null terminator, jump to the exit
 	addi $a0, $a0, 1 	# increment our string pointer
 	addi $v0, $v0, 1 	# increment our counter
-	j loop_l			# LOOP!
+	j loop_l		# LOOP!
 exit_l:
 	jr $ra
 #############################################################################
