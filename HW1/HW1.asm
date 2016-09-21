@@ -20,7 +20,7 @@ last_value: .asciiz "Last value drawn: "
 total_values: .asciiz "Total values: "
 evens: .asciiz "# of Even: "
 odds: .asciiz "# of Odds: "
-powers_of_2: .asciiz "Power of 2: "
+pow2: .asciiz "Power of 2: "
 mult2: .asciiz "Multiple of 2: "
 mult4: .asciiz "Multiple of 4: "
 mult8: .asciiz "Multiple of 8: "
@@ -73,13 +73,6 @@ mult8: .asciiz "Multiple of 8: "
 .macro pchar (%reg)
 	move $a0, %reg
 	li $v0, 11
-	syscall
-.end_macro
-
-# Exits the program with a specified string
-.macro exit_with_string (%string)
-	pstring(%string)
-	li $v0, 10
 	syscall
 .end_macro
 
@@ -173,52 +166,121 @@ Part3:
 	bgt $s0, 2, Exit_illegal_arguments	
 
 	lw $a0, arg2
-	jal Hash
+	jal Hash		# Generate the seed
 	
-	li $a0, 0
+	move $t0, $v0
+	pstring(Part3_string)
+	pint($t0)
+	pstring(endl)
+	move $v0, $t0
+	
+	li $a0, 0		# Set the seed
 	move $a1, $v0
 	li $v0, 40
 	syscall
 	
+	# Random value - $s0
+	# Div8 - $t3 ($s1)
+	# Div4 - $t4 ($s2)
+	# Div2 - $t5 ($s3)
+	# Even - $t5
+	# Total - $t6 ($s4)
+	# Power of 2 - ($s5)
+	# Odd - Total - Even
 	
+	li $s0, 0
+	li $s1, 0
+	li $s2, 0
+	li $s3, 0
+	li $s4, 0
+	li $s5, 0
 	
-loop:	li $v0, 42
+loop:	li $v0, 42		# Generate random value
+	li $a0, 0
 	li $a1, 1023
-	syscall 		# Generate random value
-	addi $t0, $a0, 1
-	pint($t0)
+	syscall 		
+	addi $s0, $a0, 1
+	
+	#Debug printing
+	pint($s0)
 	pstring(space)
-	pbin($t0)
+	pbin($s0)
 	pstring(endl)
-	move $a0, $t0		# Check if it's a power of 2 AND < 64
+	
+	move $a0, $s0		# Check if it's a power of 2 AND < 64
 	jal TrueBits
 	move $t1, $v0
-	bge $t0, 64, true			
-	beq $t1, 1, exit	# Is both are true, branch to exit
+	bne $t1, 1, true
+	addi $s5, $s5, 1	# Increment power of 2
+	blt $s0, 64, exit	# Is both are true, branch to exit	
+		
 true:	
+	addi $s4, $s4, 1	# Increment our total counter
+	
 	li $t7, 8		# Check if it's div by 8
-	div $t0, $t7		
+	div $s0, $t7		
 	mfhi $t2
 	beqz $t2, div8	
-	li $t7, 4
-	div $t0, $t7			# Check if it's div by 4
-
-
-div8:				
-div4:				# Check if it's div by 2
-div2:				# We will know if it's even or odd based on this
-				
-	j loop
-odd:				
 	
+	li $t7, 4		# Check if it's div by 4
+	div $s0, $t7			
+	mfhi $t2
+	beqz $t2, div4
+	
+	li $t7, 2		# Check if it's div by 2
+	div $s0, $t7
+	mfhi $t2
+	beqz $t2, div2
+odd:				# Not divisible by 2, must be odd
+	j loop
+	
+div8:	addi $s1, $s1, 1			
+div4:	addi $s2, $s2, 1			
+div2:	addi $s3, $s3, 1	# We will know if it's even or odd based on this
+				
 	j loop			# Back to loop
 exit:				# Print the collected data 
+	
+	pstring(last_value)
+	pint($s0)
+	pstring(endl)
+	
+	pstring(total_values)
+	pint($s4)
+	pstring(endl)
+	
+	pstring(evens)
+	pint($s3)
+	pstring(endl)
+	
+	pstring(odds)
+	sub $t9, $s4, $s3
+	pint($t9)
+	pstring(endl)
+	
+	pstring(pow2)
+	pint($s5)
+	pstring(endl)
+	
+	pstring(mult2)
+	pint($s3)
+	pstring(endl)
+	
+	pstring(mult4)
+	pint($s2)
+	pstring(endl)
+	
+	pstring(mult8)
+	pint($s1)
+	pstring(endl)
 	
 	j Exit_clean
 
 # Exit labels
 Exit_illegal_arguments:
-	exit_with_string(Err_string)
+	pstring(Err_string)
+	li $v0, 10
+	syscall
 
 Exit_clean:	
 	li $v0, 10
