@@ -166,29 +166,15 @@ Part3:
 	bgt $s0, 2, Exit_illegal_arguments	
 
 	lw $a0, arg2
-	jal Hash		# Generate the seed
-	
-	move $t0, $v0
-	pstring(Part3_string)
-	pint($t0)
-	pstring(endl)
-	move $v0, $t0
+	jal ConvertToInt	# Generate the seed
+				# $v0 has the seed now
 	
 	li $a0, 0		# Set the seed
 	move $a1, $v0
 	li $v0, 40
 	syscall
 	
-	# Random value - $s0
-	# Div8 - $t3 ($s1)
-	# Div4 - $t4 ($s2)
-	# Div2 - $t5 ($s3)
-	# Even - $t5
-	# Total - $t6 ($s4)
-	# Power of 2 - ($s5)
-	# Odd - Total - Even
-	
-	li $s0, 0
+	li $s0, 0		# Initialize the counters we need
 	li $s1, 0
 	li $s2, 0
 	li $s3, 0
@@ -196,10 +182,10 @@ Part3:
 	li $s5, 0
 	
 loop:	li $v0, 42		# Generate random value
-	li $a0, 0
-	li $a1, 1023
+	li $a0, 0		
+	li $a1, 1023		# 0 - 1023
 	syscall 		
-	addi $s0, $a0, 1
+	addi $s0, $a0, 1	# Increase to 1 - 1024
 	
 	#Debug printing
 	pint($s0)
@@ -363,13 +349,13 @@ HammingDistance:
 	jr $ra			# Simply return now.
 	
 #############################################################################
-Hash:
+ConvertToInt:
 				# $a0 holds the word we wanna hash
 	move $t0, $a0		# Move it into $t0
 	li $t2, 0		# $t2 will be our sum variable
 	
-	li $t7, 48		# $t7 holds the value for '0'
-	li $t8, 57		# $t8 holds the value for '9'
+	li $t7, '0'		# $t7 holds the value for '0'
+	li $t8, '9'		# $t8 holds the value for '9'
 	li $t9, 10		# $t9 holds 10
 	
 loop_h:	
