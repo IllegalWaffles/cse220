@@ -13,6 +13,8 @@ str_return: .asciiz "Return: "
 # atoui
 atoui_header: .asciiz "\n\n********* atoui *********\n"
 atoui_input: .ascii "723go1"
+atoui_input1: .ascii "12#34"
+atoui_input2: .ascii "15\0"
 
 # uitoa
 uitoa_header: .asciiz "\n\n********* uitoa *********\n"
@@ -130,6 +132,22 @@ main:
     print_int($t0)
     print_newline
 
+    la $a0, atoui_input1
+    jal atoui
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline
+
+    la $a0, atoui_input2
+    jal atoui
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline
+
     ############################################
     # TEST CASE for uitoa
     ############################################
@@ -143,7 +161,7 @@ main:
     move $t1, $v1
 
     print_string(str_return)
-    #print_string_reg($t0)   # will cause a crash until uitoa is implemented
+    print_string_reg($t0)   # will cause a crash until uitoa is implemented
     print_newline
     print_string(str_return)
     print_int($t1)
