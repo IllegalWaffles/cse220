@@ -168,6 +168,7 @@ Part3:
 	lw $a0, arg2
 	jal ConvertToInt	# Generate the seed
 				# $v0 has the seed now
+	
 	li $a0, 0		# Set the seed
 	move $a1, $v0
 	li $v0, 40
@@ -179,27 +180,28 @@ Part3:
 	li $s3, 0
 	li $s4, 0
 	li $s5, 0
-	li $s6, 1
+	li $s6, 1		###
 	
 loop:	li $v0, 42		# Generate random value
 	li $a0, 0		
-	li $a1, 1024		# 0 - 1023
+	li $a1, 1024		# 0 - 1023	###
 	syscall 		
 	addi $s0, $a0, 1	# Increase to 1 - 1024
 	
 	#Debug printing
-	pint($s0)
-	pstring(space)
-	pbin($s0)
-	pstring(endl)
+	#pint($s0)
+	#pstring(space)
+	#pbin($s0)
+	#pstring(endl)
 	
 	move $a0, $s0		# Check if it's a power of 2 AND < 64
 	jal TrueBits
-	bne $v0, 1, true
-	bge $s0, 64, true
+	move $t1, $v0
+	bne $t1, 1, true
 	addi $s5, $s5, 1	# Increment power of 2
-	addi $s6, $s6, -1	# Is both are true, branch to exit	
-		
+	bge $s0, 64, true	# Is both are true, branch to exit	
+	addi $s6, $s6, -1
+			
 true:	
 	addi $s4, $s4, 1	# Increment our total counter
 	
@@ -224,8 +226,8 @@ odd:				# Not divisible by 2, must be odd
 div8:	addi $s1, $s1, 1			
 div4:	addi $s2, $s2, 1			
 div2:	addi $s3, $s3, 1	# We will know if it's even or odd based on this
-	beqz $s6, exit
-						
+	
+	beqz $s6, exit		
 	j loop			# Back to loop
 exit:				# Print the collected data 
 	
