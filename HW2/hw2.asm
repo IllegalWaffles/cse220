@@ -46,27 +46,25 @@ uitoa:
 	# $a1 has the starting address
 	# $a2 has the output size
 	
+	move $t5, $a1
+	
 	li $t7, 0
 	li $t8, '0'
 	li $t9, 10
-#	li $t0, 1 # Sum var
+	li $t0, 1 # Sum var
 	
-#	move $t1, $a2 		# Set counter = output size
-#uitoa0:				# Begin loop 0
-#	beqz $t1, uitoa0exit 	# If counter = 0, exit
-#	mult $t0, $t9 		# Multiply 1 by 10
-#	mflo $t0
-#	addi $t1, $t1, -1	# Decrement counter
+	move $t1, $a2 		# Set counter = output size
+uitoa0:				# Begin loop 0
+	beqz $t1, uitoa0exit 	# If counter = 0, exit
+	multu $t0, $t9 		# Multiply 1 by 10
+	mflo $t0
+	addi $t1, $t1, -1	# Decrement counter
 
-#	j uitoa0 		# Loop
-#uitoa0exit:
-#	addi $t0, $t0, -1 	# Subtract 1
+	j uitoa0 		# Loop
+uitoa0exit:
+	addiu $t0, $t0, -1 	# Subtract 1
         
-#        ble $a0, $t0, uitoafits # If our value is greater than 10^size - 1,   
-#        move $v0, $a1 		# return with 0 and the original address of the string
-#        li $v1, 0
-#        jr $ra
-
+    bgt $a0, $t0, uitoafail # If our value is greater than 10^size - 1
 	bltz $a0, uitoafail
 	bltz $a2, uitoafail
 	# Initialize counter 1 to 0

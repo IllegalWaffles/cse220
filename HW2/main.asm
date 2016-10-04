@@ -18,11 +18,25 @@ atoui_input2: .ascii "15\0"
 
 # uitoa
 uitoa_header: .asciiz "\n\n********* uitoa *********\n"
+uitoa_orig: .asciiz "Original:"
+
 .align 2
 uitoa_value: .word 987654321
 uitoa_output: .asciiz "jeA8SAsd9123aslas"
 .align 2
 uitoa_outputSize: .word 10
+
+.align 2
+uitoa_value1: .word 999
+uitoa_output1: .asciiz "abcdefgh"
+.align 2
+uitoa_outputSize1: .word 3
+
+.align 2
+uitoa_value2: .word 1234
+uitoa_output2: .asciiz "aaaaaaaaaaaaa"
+.align 2
+uitoa_outputSize2: .word 2
 
 # decodedLength
 decodedLength_header: .asciiz "\n\n********* decodedLength *********\n"
@@ -152,7 +166,8 @@ main:
     # TEST CASE for uitoa
     ############################################
     print_string(uitoa_header)
-    lw $a0, uitoa_value
+    
+	lw $a0, uitoa_value
     la $a1, uitoa_output
     lw $a2, uitoa_outputSize
     jal uitoa
@@ -166,6 +181,48 @@ main:
     print_string(str_return)
     print_int($t1)
     print_newline
+	print_string(uitoa_orig)
+	print_string(uitoa_output)
+	print_newline
+	print_newline	
+
+	lw $a0, uitoa_value1
+    la $a1, uitoa_output1
+    lw $a2, uitoa_outputSize1
+    jal uitoa
+
+    move $t0, $v0
+    move $t1, $v1
+
+    print_string(str_return)
+    print_string_reg($t0)   # will cause a crash until uitoa is implemented
+    print_newline
+    print_string(str_return)
+    print_int($t1)
+    print_newline
+	print_string(uitoa_orig)
+	print_string(uitoa_output1)
+	print_newline
+	print_newline
+
+	lw $a0, uitoa_value2
+    la $a1, uitoa_output2
+    lw $a2, uitoa_outputSize2
+    jal uitoa
+
+    move $t0, $v0
+    move $t1, $v1
+
+    print_string(str_return)
+    print_string_reg($t0)   # will cause a crash until uitoa is implemented
+    print_newline
+    print_string(str_return)
+    print_int($t1)
+    print_newline
+	print_string(uitoa_orig)
+	print_string(uitoa_output2)
+	print_newline
+	print_newline
 
     ############################################
     # TEST CASE for decodedLength
