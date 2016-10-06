@@ -133,7 +133,6 @@ runLengthEncode_runFlag: .ascii "*"
 .globl main
 
 main:
-
     ############################################
     # TEST CASE for atoui
     ############################################

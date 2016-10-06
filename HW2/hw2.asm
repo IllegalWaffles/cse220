@@ -3,6 +3,17 @@
 # name: Kuba Gasiorowski
 # sbuid: 109776237
 ##############################################################
+
+.macro push(%reg)
+	sw %reg,($sp)	
+	addi $sp, $sp, 4
+.end_macro
+
+.macro pop(%reg)
+	addi $sp, $sp, -4
+	lw %reg,($sp)
+.end_macro
+
 .text
 
 ##############################
@@ -33,9 +44,10 @@ loop_h:
 	add $t2, $t3, $t4	# (sum * 10) + (char - '0')
 	
 	addi $t0, $t0, 1	# Increment pointer
-	j loop_h		# LOOP!
+	j loop_h			# LOOP!
 exit_h:
 	move $v0, $t2
+	move $v1, $t0
 	jr $ra
 
 
@@ -74,17 +86,14 @@ uitoa1:	# Begin loop 1
 	div $a0, $t9 		# Divide by 10
 	mflo $a0 		# Overwrite the original with the result
 	mfhi $t1		# Push the remainder onto the stack
-	addi $sp, $sp, 4
-	sw $t1,($sp)
+	push($t1)
 	addi $t7, $t7, 1	# Increment counter
 	j uitoa1		# Loop
-
 uitoa1exit:
    
 uitoa2:	# Begin loop 2
 	beqz $t7, uitoa2exit	# If counter is zero, break
-	lw $t1,($sp)		# Pop the first integer off the stack
-	addi $sp, $sp, -4
+	pop($t1)		# Pop the first integer off the stack
 	addi $t1, $t1, '0'	
 	sb $t1,($a1)		# Write it to the address given
 	addi $a1, $a1, 1	# Increment the address
@@ -92,7 +101,6 @@ uitoa2:	# Begin loop 2
 	j uitoa2		# Loop
 uitoa2exit:
         
-	# Move address into $a0
 	move $v0, $a1
 	li $v1, 1
     	
@@ -115,19 +123,106 @@ decodeRun:
     
     jr $ra
 
+########################################
 decodedLength:
     #Define your code here
     li $v0, 0
     li $v1, 0
     
+	# Save what we need to save here
+	push($s0)
+	push($s1)
+	push($s2)
+
+	move $s0, $a0	# $s0 holds the address
+	lb $s1, ($a1)	# $s1 holds the symbol
+	li $s2, 0		# $t1 is our counter
+
+	move $a0, $s1
+
+	push($ra)
+	jal isAlphanumeric
+	pop($ra)
+
+	beq $v0, 1, decodedLengthFail
+
+dl0:
+	lb $a0, ($s0)		# Load a char
+	beqz $a0, dl0exit
+
+	push($ra)			
+	jal isAlphanumeric	# Find if its alphanumerical
+	pop($ra)
+	
+	beqz $v0, dlExpansion		# If it is, go back up to the top
+	addi $t1, $t1, 1
+	addi $s0, $s0, 1
+	j dl0
+dlExpansion:					# If not, follow procedures for expansion
+	addi $s0, $s0, 2			# Skip the next char
+	move $a0, $s0
+
+	push($ra)
+	jal atoui
+	pop($ra)
+
+	add $t0, $t0, $v0
+	move $s0, $a0
+	j dl0
+dl0exit:
+
+	# Return what we saved - reverse order!!!
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	
+	move $v0, $t0
     jr $ra
-         
+
+decodedLengthFail:
+	
+	# Return what we saved - reverse order!!!
+	pop($s1)
+	pop($s0)
+	
+	li $v0, 0
+	jr $ra
+
+#####################################
 runLengthDecode:
     #Define your code here
     li $v0, 0
     
     jr $ra
 
+#Expects the char to be inside $a0
+#$v0 contains 1 if it is alphanumeric and 0 if not
+isAlphanumeric:
+
+	move $t0, $a0
+
+	bge $a0, 48, an0
+	j anfalse
+an0:
+	ble $a0, 57, antrue
+
+	bge $a0, 65, an1	
+	j anfalse
+an1:
+	ble $a0, 90, antrue
+
+	bge $a0, 97, an2
+	j anfalse
+an2:
+	ble $a0, 122, antrue
+
+anfalse:
+	li $v0, 0
+	jr $ra
+
+antrue:
+	li $v0, 1
+	jr $ra
 
 ##############################
 # PART 3 FUNCTIONS 
