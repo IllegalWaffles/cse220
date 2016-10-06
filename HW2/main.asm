@@ -43,6 +43,14 @@ decodedLength_header: .asciiz "\n\n********* decodedLength *********\n"
 decodedLength_input: .asciiz "sss!j4q!F5"
 decodedLength_runFlag: .ascii "!"
 
+decodedLength_input1: .asciiz "sx*j24qyyy*g6"
+decodedLength_runFlag1: .ascii "*"
+
+decodedLength_input2: .asciiz "sss!j4q!F5"
+decodedLength_runFlag2: .ascii "g"
+
+decodedLength_debug: .asciiz "Current char: "
+
 # decodeRun
 decodeRun_header: .asciiz "\n\n********* decodeRun *********\n"
 decodeRun_letter: .ascii "G"
@@ -229,6 +237,24 @@ main:
     print_string(decodedLength_header)
     la $a0, decodedLength_input
     la $a1, decodedLength_runFlag
+    jal decodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, decodedLength_input1
+    la $a1, decodedLength_runFlag1
+    jal decodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, decodedLength_input2
+    la $a1, decodedLength_runFlag2
     jal decodedLength
 
     move $t0, $v0

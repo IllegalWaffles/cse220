@@ -121,6 +121,10 @@ decodeRun:
     li $v0, 0
     li $v1, 0
     
+    
+    
+    
+    
     jr $ra
 
 ########################################
@@ -130,63 +134,91 @@ decodedLength:
     li $v1, 0
     
 	# Save what we need to save here
+	push($ra)
 	push($s0)
 	push($s1)
 	push($s2)
+	push($s3)
+	push($s4)
+	push($s5)
 
-	move $s0, $a0	# $s0 holds the address
+	move $s0, $a0	# $s0 holds the string pointer
 	lb $s1, ($a1)	# $s1 holds the symbol
-	li $s2, 0		# $t1 is our counter
+	li $s2, 0	# $s2 reserved for our current char
+	li $s3, 0	# $s3 is our counter
 
 	move $a0, $s1
 
-	push($ra)
 	jal isAlphanumeric
-	pop($ra)
 
 	beq $v0, 1, decodedLengthFail
-
-dl0:
-	lb $a0, ($s0)		# Load a char
-	beqz $a0, dl0exit
-
-	push($ra)			
-	jal isAlphanumeric	# Find if its alphanumerical
-	pop($ra)
 	
-	beqz $v0, dlExpansion		# If it is, go back up to the top
-	addi $t1, $t1, 1
+DL0:
+	lb $s2, ($s0)
+	
+	# The comments below are meant for debugging
+	
+	#li $v0, 4
+	#la $a0, decodedLength_debug
+	#syscall
+	
+	#li $v0, 11
+	#move $a0, $s2
+	#syscall
+	
+	#print_space
+	
+	#li $v0, 1
+	#move $a0, $s3
+	#syscall
+	
+	#li $v0, 11
+	#li $a0, '\n'
+	#syscall
+	
+	beqz $s2, DLexit
+	move $a0, $s2
+	jal isAlphanumeric
+	beqz $v0, DL1
+	addi $s3, $s3, 1
 	addi $s0, $s0, 1
-	j dl0
-dlExpansion:					# If not, follow procedures for expansion
-	addi $s0, $s0, 2			# Skip the next char
+	j DL0
+DL1:
+	addi $s0, $s0, 2
 	move $a0, $s0
-
-	push($ra)
 	jal atoui
-	pop($ra)
-
-	add $t0, $t0, $v0
-	move $s0, $a0
-	j dl0
-dl0exit:
-
-	# Return what we saved - reverse order!!!
+	add $s3, $s3, $v0
+	move $s0, $v1
+	j DL0
+DLexit:
+	
+	addi $v0, $s3, 1
+	
+	pop($s5)
+	pop($s4)
+	pop($s3)
 	pop($s2)
 	pop($s1)
 	pop($s0)
+	pop($ra)
 	
-	move $v0, $t0
-    jr $ra
+	jr $ra
 
 decodedLengthFail:
 	
 	# Return what we saved - reverse order!!!
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
 	pop($s1)
 	pop($s0)
+	pop($ra)
 	
 	li $v0, 0
 	jr $ra
+
+
 
 #####################################
 runLengthDecode:
