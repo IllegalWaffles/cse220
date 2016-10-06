@@ -58,6 +58,20 @@ decodeRun_letter: .ascii "G"
 decodeRun_runLength: .word 6
 decodeRun_output: .asciiz "asd9u2j,as,j213se!"
 
+decodeRun_letter1: .ascii "a"
+.align 2
+decodeRun_runLength1: .word 2
+decodeRun_output1: .asciiz "bbbbbbbbbbbbb"
+
+decodeRun_letter2: .ascii "3"
+.align 2
+decodeRun_runLength2: .word 5
+decodeRun_output2: .asciiz "bbbbbbbbbbbbb"
+
+decodeRun_letter3: .ascii "h"
+.align 2
+decodeRun_runLength3: .word -2
+decodeRun_output3: .asciiz "bbbbbbbbbbbbb"
 
 # runLengthDecode
 runLengthDecode_header: .asciiz "\n\n********* runLengthDecode *********\n"
@@ -66,6 +80,8 @@ runLengthDecode_output: .asciiz "jhjkhasd987(!@q2j312kja214asasHJU!#Kasjd21"
 .align 2
 runLengthDecode_outputSize: .word 18
 runLengthDecode_runFlag: .ascii "!"
+
+runLengthDecode_debug: .asciiz "Debug : "
 
 # encodedLength
 encodedLength_header: .asciiz "\n\n********* encodedLength *********\n"
@@ -127,7 +143,7 @@ runLengthEncode_runFlag: .ascii "*"
 
 .macro print_char_addr(%address)
     li $v0, 11
-    lb $a0, %address
+    lb $a0, (%address)
     syscall
 .end_macro
 
@@ -278,8 +294,57 @@ main:
     print_string(str_return)
     print_int($t1)
     print_newline()
-    
-    
+
+    print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
+	la $a0, decodeRun_letter1
+    lw $a1, decodeRun_runLength1
+    la $a2, decodeRun_output1
+    move $s0, $a2 # make copy of memory address so we can print the string after function returns
+    jal decodeRun
+
+    # since $v0 points to an unprocessed part of output[] there is no sense in printing it
+    move $t1, $v1
+
+    print_string(str_return)
+    print_int($t1)
+    print_newline()
+
+    print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
+	la $a0, decodeRun_letter2
+    lw $a1, decodeRun_runLength2
+    la $a2, decodeRun_output2
+    move $s0, $a2 # make copy of memory address so we can print the string after function returns
+    jal decodeRun
+
+    # since $v0 points to an unprocessed part of output[] there is no sense in printing it
+    move $t1, $v1
+
+    print_string(str_return)
+    print_int($t1)
+    print_newline()
+
+    print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
+    la $a0, decodeRun_letter3
+    lw $a1, decodeRun_runLength3
+    la $a2, decodeRun_output3
+    move $s0, $a2 # make copy of memory address so we can print the string after function returns
+    jal decodeRun
+
+    # since $v0 points to an unprocessed part of output[] there is no sense in printing it
+    move $t1, $v1
+
+    print_string(str_return)
+    print_int($t1)
+    print_newline()
 
     print_string(str_result)
     print_string_reg($s0)
@@ -289,7 +354,14 @@ main:
     # TEST CASE for runLengthDecode
     ############################################
     print_string(runLengthDecode_header)
-    la $a0, runLengthDecode_input
+    
+	print_string(runLengthDecode_debug)
+	la $a0, runLengthDecode_output
+	li $v0, 4
+	syscall
+	print_newline()
+
+	la $a0, runLengthDecode_input
     la $a1, runLengthDecode_output
     lw $a2, runLengthDecode_outputSize
     la $a3, runLengthDecode_runFlag
@@ -298,11 +370,12 @@ main:
 
     move $t0, $v0
 
+	print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
     print_string(str_return)
     print_int($t0)
-    print_newline()
-    print_string(str_result)
-    print_string_reg($s0)
     print_newline()
 
     ############################################

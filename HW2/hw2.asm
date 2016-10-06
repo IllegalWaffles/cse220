@@ -46,8 +46,8 @@ loop_h:
 	addi $t0, $t0, 1	# Increment pointer
 	j loop_h			# LOOP!
 exit_h:
-	move $v0, $t2
-	move $v1, $t0
+	move $v0, $t2	# Return the number calculated
+	move $v1, $t0	# Return a pointer the the place in the string we are at
 	jr $ra
 
 
@@ -121,11 +121,59 @@ decodeRun:
     li $v0, 0
     li $v1, 0
     
-    
-    
-    
-    
+    # $a0 is the char
+	# $a1 is the run length
+	# $a2 is the output address
+
+	push($s0)
+
+	move $s0, $a0	# Save the originial address
+
+	lb $t0, ($a0)
+
+	print_string(charToWrite)
+	print_char_reg($t0)
+	print_newline()
+
+	move $t1, $a1
+	move $t2, $a2
+	
+	move $a0, $t0
+	push($ra)
+	jal isAlphabetic
+	pop($ra)
+
+	beqz $v0, DRfail
+	ble $t1, 0, DRfail
+
+DR0:
+	beqz, $t1, DRexit
+
+	print_string(overwrittenChar)
+	print_char_addr($t2)
+	print_newline()
+
+	sb $t0, ($t2)
+	addi $t2, $t2, 1
+	addi $t1, $t1, -1	
+	j DR0
+DRexit:
+	
+	addi $v0, $t2, 1
+	li $v1, 1
+
+	pop($s0)
+
     jr $ra
+
+DRfail:
+
+	li $v1, 0
+	move $v0, $s0	
+
+	pop($s0)
+	
+	jr $ra
 
 ########################################
 decodedLength:
@@ -139,8 +187,6 @@ decodedLength:
 	push($s1)
 	push($s2)
 	push($s3)
-	push($s4)
-	push($s5)
 
 	move $s0, $a0	# $s0 holds the string pointer
 	lb $s1, ($a1)	# $s1 holds the symbol
@@ -194,8 +240,6 @@ DLexit:
 	
 	addi $v0, $s3, 1
 	
-	pop($s5)
-	pop($s4)
 	pop($s3)
 	pop($s2)
 	pop($s1)
@@ -207,8 +251,6 @@ DLexit:
 decodedLengthFail:
 	
 	# Return what we saved - reverse order!!!
-	pop($s5)
-	pop($s4)
 	pop($s3)
 	pop($s2)
 	pop($s1)
@@ -223,15 +265,103 @@ decodedLengthFail:
 #####################################
 runLengthDecode:
     #Define your code here
-    li $v0, 0
-    
+    li $v0, 0	
+	
+	# s0 - input pointer
+	# s1 - output pointer
+	# s2 - flag
+	# s3 - current char
+	# s4 - output size
+	# s5 - pointer to flag
+
+	push($ra)	# Incase we want to make some function calls (which we do)
+	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)
+	push($s4)
+	push($s5)
+	
+	move $s0, $a0
+	move $s1, $a1
+	move $s5, $a3
+	lb $s2, ($s5)
+
+	move $a0, $s0
+	move $a1, $s5
+	jal decodedLength
+
+	bge $s4, $v0, RLDfail
+
+	move $a0, $s2
+	jal isAlphanumeric
+
+	beq $v0, 1, RLDfail
+
+RLD0:
+	lb $s3, ($s0)		# Read char
+
+	print_string(charRead)
+	print_char_reg($s3)
+	print_newline()
+
+	beqz $s3, RLDexit	# If it's the null terminator, exit
+	beq $s3, $s2, RLD1	# If it's the flag, jump down
+	sb $s3, ($s1)		# Otherwise copy the char
+	addi $s0, $s0, 1	# Increment both pointers
+	addi $s1, $s1, 1
+	j RLD0				# Loop!
+RLD1:
+	addi $s0, $s0, 1	# Increment the input pointer and save the char there
+	move $t0, $s0		# Copy a pointer to the char, since decodeRun needs a pointer
+
+	print_string(charStored)
+	print_char_addr($t0)
+	print_newline()
+
+	addi $s0, $s0, 1	# Increment the input pointer. Should now point to a number
+	move $a0, $s0		# Move the pointer to argument slot and call atoui
+	jal atoui
+	
+	move $t1, $v0	# Hold on to number parsed
+	move $s0, $v1	# Overwrite input pointer
+					# Set args for decodeRun
+	move $a0, $t0 	# Pointer to char
+	move $a1, $t1	# Integer
+	move $a2, $s1	# Output place
+
+	jal decodeRun	# Write however many chars we need to output
+
+	move $s1, $v0	# Overwrite output pointer
+	j RLD0
+RLDexit:
+
+	pop($s5)	# Restore stuff
+	pop($s4)	
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+
+	li $v0, 1
+	jr $ra	
+	
+RLDfail:
+	
+	pop($s5)	# Restore stuff
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+
+	li $v0, 0
     jr $ra
 
-#Expects the char to be inside $a0
-#$v0 contains 1 if it is alphanumeric and 0 if not
+#####################################
 isAlphanumeric:
-
-	move $t0, $a0
 
 	bge $a0, 48, an0
 	j anfalse
@@ -253,6 +383,26 @@ anfalse:
 	jr $ra
 
 antrue:
+	li $v0, 1
+	jr $ra
+##############################
+isAlphabetic:
+
+	bge $a0, 65, ab1	
+	j abfalse
+ab1:
+	ble $a0, 90, abtrue
+
+	bge $a0, 97, ab2
+	j abfalse
+ab2:
+	ble $a0, 122, abtrue
+
+abfalse:
+	li $v0, 0
+	jr $ra
+
+abtrue:
 	li $v0, 1
 	jr $ra
 
@@ -283,3 +433,9 @@ runLengthEncode:
 
 .data 
 .align 2
+
+charStored: .asciiz "Char stored:"
+charRead: .asciiz "Char read:"
+newChar: .asciiz "New Char:"
+overwrittenChar: .asciiz "Overwritten char:"
+charToWrite: .asciiz "Char to write:"
