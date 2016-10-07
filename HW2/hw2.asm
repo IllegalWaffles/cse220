@@ -288,13 +288,14 @@ runLengthDecode:
 	move $s0, $a0
 	move $s1, $a1
 	move $s5, $a3
+	move $s4, $a2
 	lb $s2, ($s5)
 
 	move $a0, $s0
 	move $a1, $s5
 	jal decodedLength
 
-	bge $s4, $v0, RLDfail
+	blt $s4, $v0, RLDfail
 
 	move $a0, $s2
 	jal isAlphanumeric
@@ -422,14 +423,168 @@ encodeRun:
     #Define your code here
     li $v0, 0
     li $v1, 0
-    
-    jr $ra
+	
+	push($ra)
+	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)	
+	push($s4)
+
+	move $s0, $a2	# Output
+	li $s1, 0		# Counter
+	move $s2, $a1	# Run length
+	lb $s3, ($a3)	# Flag
+	lb $s4, ($a0)	# Char
+
+	move $a0, $s4	# Check if char is alphabetical
+	jal isAlphabetic
+	beq $v0, 0, ERfail
+
+	move $a0, $s3	# Check if the flag is alphanumerical
+	jal isAlphanumeric
+	beq $v0, 1, ERfail
+
+	bltz $s2, ERfail	# Run cannot be non-positive
+
+	bgt $s2, 3, ER1		# If run length > 3, do the other thing
+ER0:
+	sb $s4, ($s0)
+	addi $s0, $s0, 1
+	addi $s1, $s1, -1
+	beqz $s1, ERexit
+	j ER0
+ER1:
+	sb $s3, ($s0)		# Write flag
+	addi $s0, $s0, 1
+	sb $s4, ($s0)		# Write char
+	addi $s0, $s0, 1
+	
+	move $a0, $s2		# Make some space for the int
+	jal numDigits
+	addi $t0, $v0, 1
+
+	move $a0, $s2		# Write the int out
+	move $a1, $s0
+	move $a2, $t0
+	jal uitoa
+
+ERexit:
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)	
+	pop($ra)
+
+	li $v1, 1
+	jr $ra
+
+
+ERfail:
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)	
+	pop($ra)
+
+	move $v0, $s0
+	li $v0, 0
+	jr $ra
 
 encodedLength:
     #Define your code here
     li $v0, 0
     
-    jr $ra        
+	# Save things
+	push($ra)
+	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)
+	push($s4)
+	push($s5)
+
+	move $s0, $a0
+	li $s1, 0
+	li $s3, 0
+	li $s4, 0
+	li $s5, 0	# Indicates if the last strech of chars was a run or not
+
+	lb $s1, ($s0)
+
+	beqz $s1, RDfail
+
+RD0:
+	lb $s2, ($s0)
+
+	#print_string(charRead)
+	#print_char_reg($s2	)
+	#print_newline()
+
+	addi $s0, $s0, 1
+	beqz $s2, RDexit
+	bne $s1, $s2, RDdiff
+	addi $s3, $s3, 1
+	j RD0
+RDdiff:
+	move $s1, $s2
+	bgt $s3, 3, RDenc
+	add $s4, $s4, $s3
+	addi $s4, $s4, 1	
+
+	#print_string(countIncreased)
+	#print_int($s4)
+	#print_newline()
+
+	li $s3, 0
+	j RD0
+RDenc:
+	move $a0, $s3
+	jal numDigits
+	addi $v0, $v0, 2
+	add $s4, $s4, $v0
+
+	#print_string(countIncreased)
+	#print_int($s4)
+	#print_newline()
+
+	li $s3, 0
+	j RD0
+RDexit: # Before we fully exit, we need to make sure all of the chars were accounted for.
+		# Probably 	better to fix the loop but.... fuck it
+	bgt $s3, 3, RDexit1
+	add $s4, $s4, $s3
+	j RDexit2
+	
+RDexit1:
+	
+	move $a0, $s3
+	jal numDigits
+	addi $v0, $v0, 2
+	add $s4, $s4, $v0
+
+RDexit2:
+
+	#move $v0, $s4
+	addi $v0, $s4, 1
+
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+    
+    jr $ra       
+
+RDfail:
+
+	li $v0, 0
+	jr $ra
+
 
 runLengthEncode:
     #Define your code here
@@ -437,6 +592,21 @@ runLengthEncode:
     
     jr $ra
     
+###############################
+numDigits:
+
+	# $a0 has the integer
+	li $t0, 10
+	li $v0, 0
+ND0:
+	div $a0, $t0
+	mflo $a0
+	mfhi $t1
+	beqz $t1, NDexit
+	addi $v0, $v0, 1
+	j ND0
+NDexit:
+	jr $ra
 
 
 .data 
@@ -447,3 +617,4 @@ charRead: .asciiz "Char read:"
 newChar: .asciiz "New Char:"
 overwrittenChar: .asciiz "Overwritten char:"
 charToWrite: .asciiz "Char to write:"
+countIncreased: .asciiz "Count Increased To:"

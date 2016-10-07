@@ -75,17 +75,32 @@ decodeRun_output3: .asciiz "bbbbbbbbbbbbb"
 
 # runLengthDecode
 runLengthDecode_header: .asciiz "\n\n********* runLengthDecode *********\n"
-runLengthDecode_input: .asciiz "sss!j4q!F5"
 runLengthDecode_output: .asciiz "jhjkhasd987(!@q2j312kja214asasHJU!#Kasjd21"
+
+runLengthDecode_input: .asciiz "sss!j4q!F5"
 .align 2
 runLengthDecode_outputSize: .word 18
 runLengthDecode_runFlag: .ascii "!"
+
+runLengthDecode_input1: .asciiz "*A5hhh*U11V"
+.align 2
+runLengthDecode_outputSize1: .word 8
+runLengthDecode_runFlag1: .ascii "*"
+
+runLengthDecode_input2: .asciiz "*A5hhh*U11V"
+.align 2
+runLengthDecode_outputSize2: .word 21
+runLengthDecode_runFlag2: .ascii "*"
 
 runLengthDecode_debug: .asciiz "Debug : "
 
 # encodedLength
 encodedLength_header: .asciiz "\n\n********* encodedLength *********\n"
+
 encodedLength_input: .asciiz "xxhhhhhhhhhhhhhhhuuunnnnnnnrere"
+encodedLength_input1: .asciiz "AAAAAAAAAAAAAAAAAAAAAA"
+encodedLength_input2: .asciiz ""
+encodedLength_input3: .asciiz "aaaabb"
 
 # encodeRun
 encodeRun_header: .asciiz "\n\n********* encodeRun *********\n"
@@ -377,12 +392,82 @@ main:
     print_string(str_return)
     print_int($t0)
     print_newline()
+#####
+	print_string(runLengthDecode_debug)
+	la $a0, runLengthDecode_output
+	li $v0, 4
+	syscall
+	print_newline()
+
+	la $a0, runLengthDecode_input1
+    la $a1, runLengthDecode_output
+    lw $a2, runLengthDecode_outputSize1
+    la $a3, runLengthDecode_runFlag1
+    move $s0, $a1  # make copy of memory address so we can print the string after function returns
+    jal runLengthDecode
+
+    move $t0, $v0
+
+	print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+#####
+	print_string(runLengthDecode_debug)
+	la $a0, runLengthDecode_output
+	li $v0, 4
+	syscall
+	print_newline()
+
+	la $a0, runLengthDecode_input2
+    la $a1, runLengthDecode_output
+    lw $a2, runLengthDecode_outputSize2
+    la $a3, runLengthDecode_runFlag2
+    move $s0, $a1  # make copy of memory address so we can print the string after function returns
+    jal runLengthDecode
+
+    move $t0, $v0
+
+	print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
 
     ############################################
     # TEST CASE for encodedLength
     ############################################
     print_string(encodedLength_header)
     la $a0, encodedLength_input
+    jal encodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, encodedLength_input1
+    jal encodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, encodedLength_input2
+    jal encodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, encodedLength_input3
     jal encodedLength
 
     move $t0, $v0
