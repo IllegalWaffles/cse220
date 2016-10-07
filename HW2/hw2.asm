@@ -432,7 +432,7 @@ encodeRun:
 	push($s4)
 
 	move $s0, $a2	# Output
-	li $s1, 0		# Counter
+	move $s1, $a1	# Counter
 	move $s2, $a1	# Run length
 	lb $s3, ($a3)	# Flag
 	lb $s4, ($a0)	# Char
@@ -445,7 +445,7 @@ encodeRun:
 	jal isAlphanumeric
 	beq $v0, 1, ERfail
 
-	bltz $s2, ERfail	# Run cannot be non-positive
+	blez $s2, ERfail	# Run cannot be non-positive
 
 	bgt $s2, 3, ER1		# If run length > 3, do the other thing
 ER0:

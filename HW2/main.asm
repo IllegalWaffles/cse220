@@ -104,12 +104,18 @@ encodedLength_input3: .asciiz "aaaabb"
 
 # encodeRun
 encodeRun_header: .asciiz "\n\n********* encodeRun *********\n"
+
 encodeRun_letter: .ascii "G"
 .align 2
 encodeRun_runLength: .word 17
 encodeRun_output: .asciiz "JASDo823das[23]4[d!!13qdfas21qdqewsf[aes234[faeasdfaaa113"
 encodeRun_runFlag: .ascii "!"
 
+encodeRun_letter1: .ascii "A"
+.align 2
+encodeRun_runLength1: .word -1
+encodeRun_output1: .asciiz "vg18b0bvn18934unb!B#$!0b8njb@$bn4o9bn2B@$$4$bg24b242222"
+encodeRun_runFlag1: .ascii "$"
 
 # runLengthEncode
 runLengthEncode_header: .asciiz "\n\n********* runLengthEncode *********\n"
@@ -493,6 +499,23 @@ main:
     print_string(str_result)
     print_string_reg($s0)
     print_newline()
+	print_newline()
+
+	la $a0, encodeRun_letter1
+    lw $a1, encodeRun_runLength1
+    la $a2, encodeRun_output1
+    la $a3, encodeRun_runFlag1
+    move $s0, $a2  # make copy of memory address so we can print the string after function returns
+    jal encodeRun
+
+    move $t1, $v1
+    print_string(str_return)
+    print_int($t1)
+    print_newline()
+    print_string(str_result)
+    print_string_reg($s0)
+    print_newline()
+	print_newline()
 
     ############################################
     # TEST CASE for runLengthEncode
