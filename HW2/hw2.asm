@@ -131,9 +131,9 @@ decodeRun:
 
 	lb $t0, ($a0)
 
-	print_string(charToWrite)
-	print_char_reg($t0)
-	print_newline()
+	#print_string(charToWrite)
+	#print_char_reg($t0)
+	#print_newline()
 
 	move $t1, $a1
 	move $t2, $a2
@@ -149,9 +149,9 @@ decodeRun:
 DR0:
 	beqz, $t1, DRexit
 
-	print_string(overwrittenChar)
-	print_char_addr($t2)
-	print_newline()
+	#print_string(overwrittenChar)
+	#print_char_addr($t2)
+	#print_newline()
 
 	sb $t0, ($t2)
 	addi $t2, $t2, 1
@@ -159,7 +159,8 @@ DR0:
 	j DR0
 DRexit:
 	
-	addi $v0, $t2, 1
+	#addi $v0, $t2, 1
+	move $v0, $t2
 	li $v1, 1
 
 	pop($s0)
@@ -273,6 +274,7 @@ runLengthDecode:
 	# s3 - current char
 	# s4 - output size
 	# s5 - pointer to flag
+	# s6 - stored char
 
 	push($ra)	# Incase we want to make some function calls (which we do)
 	push($s0)
@@ -281,6 +283,7 @@ runLengthDecode:
 	push($s3)
 	push($s4)
 	push($s5)
+	push($s6)
 	
 	move $s0, $a0
 	move $s1, $a1
@@ -301,9 +304,9 @@ runLengthDecode:
 RLD0:
 	lb $s3, ($s0)		# Read char
 
-	print_string(charRead)
-	print_char_reg($s3)
-	print_newline()
+	#print_string(charRead)
+	#print_char_reg($s3)
+	#print_newline()
 
 	beqz $s3, RLDexit	# If it's the null terminator, exit
 	beq $s3, $s2, RLD1	# If it's the flag, jump down
@@ -313,11 +316,11 @@ RLD0:
 	j RLD0				# Loop!
 RLD1:
 	addi $s0, $s0, 1	# Increment the input pointer and save the char there
-	move $t0, $s0		# Copy a pointer to the char, since decodeRun needs a pointer
+	move $s6, $s0		# Copy a pointer to the char, since decodeRun needs a pointer
 
-	print_string(charStored)
-	print_char_addr($t0)
-	print_newline()
+	#print_string(charStored)
+	#print_char_addr($s6)
+	#print_newline()
 
 	addi $s0, $s0, 1	# Increment the input pointer. Should now point to a number
 	move $a0, $s0		# Move the pointer to argument slot and call atoui
@@ -326,7 +329,7 @@ RLD1:
 	move $t1, $v0	# Hold on to number parsed
 	move $s0, $v1	# Overwrite input pointer
 					# Set args for decodeRun
-	move $a0, $t0 	# Pointer to char
+	move $a0, $s6 	# Pointer to char
 	move $a1, $t1	# Integer
 	move $a2, $s1	# Output place
 
@@ -336,6 +339,10 @@ RLD1:
 	j RLD0
 RLDexit:
 
+	li $t0, '\0'
+	sb $t0, ($s1)
+
+	pop($s6)
 	pop($s5)	# Restore stuff
 	pop($s4)	
 	pop($s3)
@@ -349,6 +356,7 @@ RLDexit:
 	
 RLDfail:
 	
+	pop($s6)
 	pop($s5)	# Restore stuff
 	pop($s4)
 	pop($s3)
