@@ -119,11 +119,11 @@ encodeRun_runFlag1: .ascii "$"
 
 # runLengthEncode
 runLengthEncode_header: .asciiz "\n\n********* runLengthEncode *********\n"
-runLengthEncode_input: .asciiz "AAAhhhhhhhabc"
+runLengthEncode_input: .asciiz "aaaaabbbbb"
 runLengthEncode_output: .asciiz "f78raewkuiO*A&*(QAWE2qp8947kjdfs244"
 .align 2
-runLengthEncode_outputSize: .word 10
-runLengthEncode_runFlag: .ascii "*"
+runLengthEncode_outputSize: .word 15
+runLengthEncode_runFlag: .ascii "!"
 
 
 # Constants
@@ -521,6 +521,11 @@ main:
     # TEST CASE for runLengthEncode
     ############################################
     print_string(runLengthEncode_header)
+    
+    print_newline()
+    print_string(runLengthEncode_input)
+    print_newline()
+    
     la $a0, runLengthEncode_input
     la $a1, runLengthEncode_output
     lw $a2, runLengthEncode_outputSize

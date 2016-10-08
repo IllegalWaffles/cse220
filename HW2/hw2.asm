@@ -585,11 +585,120 @@ RDfail:
 	li $v0, 0
 	jr $ra
 
-
+############################################
 runLengthEncode:
-    #Define your code here
+    
     li $v0, 0
     
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    push($s4)
+    push($s5)
+	push($s6)
+	
+	move $s0, $a1	# Load output string
+	move $s1, $a0	# Load input string
+	lb $s2, ($s1)	# Initialize old char with first char
+    li $s3, 0		# Initialize current char
+    li $s4, 0		# Initialize counter
+    lb $s5, ($a3)	# Get the flag char
+    move $s6, $a3	# Save the flag char's address
+    
+    move $t0, $a2	# Temporarily save the output size
+    
+    move $a0, $s1
+    
+    push($t0)
+    jal encodedLength
+   	pop($t0)
+    move $t1, $v0
+    blt $t0, $t1, RLEfail
+    
+    move $a0, $s5
+    jal isAlphanumeric
+    beq $v0, 1, RLEfail
+    
+RLE0: 
+	lb $s3, ($s1)			# Get the next input char
+	beqz $s3, RLEexit		# If it's a null terminator, leave this section
+	bne $s3, $s2 RLEdiff	# If the new char is different, do some other stuff
+	addi $s1, $s1, 1		# Increment input pointer
+	addi $s4, $s4, 1		# Increment counter    
+    move $s2, $s3			# Update the latest char
+    j RLE0
+RLEdiff:
+	ble $s4, 3, RLE1
+	addi $a0, $s1, -1    
+    move $a1, $s4			# Set up args for the encodeRun call
+    move $a2, $s0
+    move $a3, $s6
+    jal encodeRun			# Call encodeRun
+    
+    move $s0, $v0			# Overwrite the output pointer
+    #li $s4, 1				# Reset the counter
+    li $s4, 0
+    move $s2, $s3			
+    j RLE0
+RLE1:
+	sb $s2, ($s0)			# Write out
+	addi $s0, $s0, 1		# Increment output pointer
+	addi $s4, $s4, -1		# Decrement counter
+	bnez $s4, jmp
+	#addi $s4, $s4, 1
+	move $s2, $s3
+	j RLE0
+jmp:j RLE1
+	
+RLEexit:					# Null terminator was reached
+							# We just have to write out the remaining chars now.
+	ble $s4, 3, RLEexit0	# Same as above code.
+	addi $a0, $s1, -1
+	move $a1, $s4
+    move $a2, $s0
+    move $a3, $s6
+    jal encodeRun
+    move $s0, $v0
+    j RLEexit1
+
+RLEexit0:
+	sb $s2, ($s0)
+	addi $s0, $s0, 1
+	addi $s4, $s4, -1
+	beqz $s4, RLEexit1
+	j RLEexit0
+	
+RLEexit1:
+    
+    li $t0, '\0'
+    sb $t0, ($s0)
+    
+    pop($s6)
+    pop($s5)
+    pop($s4)
+    pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
+    pop($ra)
+    
+    li $v0, 1
+    jr $ra
+    
+RLEfail:
+	
+	pop($s6)
+	pop($s5)
+    pop($s4)
+    pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
+    pop($ra)
+
+	li $v0, 0
     jr $ra
     
 ###############################
@@ -611,7 +720,7 @@ NDexit:
 
 .data 
 .align 2
-
+#Various debug texts
 charStored: .asciiz "Char stored:"
 charRead: .asciiz "Char read:"
 newChar: .asciiz "New Char:"
