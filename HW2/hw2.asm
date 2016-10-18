@@ -77,7 +77,7 @@ uitoa0exit:
 	addiu $t0, $t0, -1 	# Subtract 1
         
     bgt $a0, $t0, uitoafail # If our value is greater than 10^size - 1
-	bltz $a0, uitoafail
+	blez $a0, uitoafail
 	bltz $a2, uitoafail
 	# Initialize counter 1 to 0
     
@@ -160,7 +160,7 @@ DR0:
 DRexit:
 	
 	#addi $v0, $t2, 1
-	move $v0, $t2
+	move $v0, $s0
 	li $v1, 1
 
 	pop($s0)
@@ -199,7 +199,9 @@ decodedLength:
 	jal isAlphanumeric
 
 	beq $v0, 1, decodedLengthFail
-	
+	lb $t1, ($s0)
+	beqz $t1, decodedLengthFail
+
 DL0:
 	lb $s2, ($s0)
 	
@@ -470,6 +472,9 @@ ER1:
 	jal uitoa
 
 ERexit:
+	
+	move $v0, $s0
+
 	pop($s4)
 	pop($s3)
 	pop($s2)
@@ -482,6 +487,9 @@ ERexit:
 
 
 ERfail:
+	
+	move $v0, $s0
+
 	pop($s4)
 	pop($s3)
 	pop($s2)
@@ -489,7 +497,6 @@ ERfail:
 	pop($s0)	
 	pop($ra)
 
-	move $v0, $s0
 	li $v0, 0
 	jr $ra
 
@@ -581,6 +588,14 @@ RDexit2:
     jr $ra       
 
 RDfail:
+
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)+
 
 	li $v0, 0
 	jr $ra

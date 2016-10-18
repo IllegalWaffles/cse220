@@ -38,6 +38,12 @@ uitoa_output2: .asciiz "aaaaaaaaaaaaa"
 .align 2
 uitoa_outputSize2: .word 2
 
+.align 2
+uitoa_value3: .word 0
+uitoa_output3: .asciiz "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+.align 2
+uitoa_outputSize3: .word 20
+
 # decodedLength
 decodedLength_header: .asciiz "\n\n********* decodedLength *********\n"
 decodedLength_input: .asciiz "sss!j4q!F5"
@@ -48,6 +54,9 @@ decodedLength_runFlag1: .ascii "*"
 
 decodedLength_input2: .asciiz "sss!j4q!F5"
 decodedLength_runFlag2: .ascii "g"
+
+decodedLength_input3: .asciiz "\0"
+decodedLength_runFlag3: .ascii "!"
 
 decodedLength_debug: .asciiz "Current char: "
 
@@ -111,11 +120,11 @@ encodeRun_runLength: .word 17
 encodeRun_output: .asciiz "JASDo823das[23]4[d!!13qdfas21qdqewsf[aes234[faeasdfaaa113"
 encodeRun_runFlag: .ascii "!"
 
-encodeRun_letter1: .ascii "A"
+encodeRun_letter1: .ascii "R"
 .align 2
-encodeRun_runLength1: .word -1
-encodeRun_output1: .asciiz "vg18b0bvn18934unb!B#$!0b8njb@$bn4o9bn2B@$$4$bg24b242222"
-encodeRun_runFlag1: .ascii "$"
+encodeRun_runLength1: .word 2
+encodeRun_output1: .asciiz "????????????????????"
+encodeRun_runFlag1: .ascii "#"
 
 # runLengthEncode
 runLengthEncode_header: .asciiz "\n\n********* runLengthEncode *********\n"
@@ -125,6 +134,7 @@ runLengthEncode_output: .asciiz "f78raewkuiO*A&*(QAWE2qp8947kjdfs244"
 runLengthEncode_outputSize: .word 15
 runLengthEncode_runFlag: .ascii "!"
 
+returnAddr: .asciiz "Return addr: "
 
 # Constants
 .eqv QUIT 10
@@ -172,6 +182,12 @@ runLengthEncode_runFlag: .ascii "!"
     li $v0, 11
     move $a0, %reg
     syscall
+.end_macro
+
+.macro print_hex(%reg)
+	li $v0, 34
+	move $a0, %reg
+	syscall
 .end_macro
 
 .text
@@ -268,6 +284,25 @@ main:
 	print_newline
 	print_newline
 
+	lw $a0, uitoa_value3
+    la $a1, uitoa_output3
+    lw $a2, uitoa_outputSize3
+    jal uitoa
+
+    move $t0, $v0
+    move $t1, $v1
+
+    print_string(str_return)
+    print_string_reg($t0)   # will cause a crash until uitoa is implemented
+    print_newline
+    print_string(str_return)
+    print_int($t1)
+    print_newline
+	print_string(uitoa_orig)
+	print_string(uitoa_output3)
+	print_newline
+	print_newline
+
     ############################################
     # TEST CASE for decodedLength
     ############################################
@@ -292,6 +327,15 @@ main:
 
 	la $a0, decodedLength_input2
     la $a1, decodedLength_runFlag2
+    jal decodedLength
+
+    move $t0, $v0
+    print_string(str_return)
+    print_int($t0)
+    print_newline()
+
+	la $a0, decodedLength_input3
+    la $a1, decodedLength_runFlag3
     jal decodedLength
 
     move $t0, $v0
@@ -493,12 +537,17 @@ main:
     jal encodeRun
 
     move $t1, $v1
+	move $t2, $v0
+	print_hex($s0)
+	print_newline()
     print_string(str_return)
     print_int($t1)
     print_newline()
     print_string(str_result)
     print_string_reg($s0)
     print_newline()
+	print_string(returnAddr)
+	print_hex($t2)
 	print_newline()
 
 	la $a0, encodeRun_letter1
@@ -509,12 +558,17 @@ main:
     jal encodeRun
 
     move $t1, $v1
+	move $t2, $v0
+	print_hex($s0)
+	print_newline()
     print_string(str_return)
     print_int($t1)
     print_newline()
     print_string(str_result)
     print_string_reg($s0)
     print_newline()
+	print_string(returnAddr)
+	print_hex($t2)
 	print_newline()
 
     ############################################
