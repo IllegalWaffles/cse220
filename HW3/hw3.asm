@@ -10,7 +10,51 @@
 ##############################
 
 smiley:
-    #Define your code here
+    li $t9, 0xFFFF0000	# Starting position of the grid. Not to be overwritten
+    addiu $t8, $t9, 198 # Establish upper bound
+    
+    move $t0, $t9
+    
+    # Build black tile
+    li $t1, 0x0F		# 1st byte
+    sll $t1, $t1, 8
+    ori	$t1, $t1, '\0'	# 2nd byte
+    
+    # Build eye tile
+    li $t2, 0xB7
+	sll $t2, $t2, 8
+	ori $t2, $t2, 'b'
+        
+    # Build mouth tile
+    li $t3, 0x1F
+    sll $t3, $t3, 8
+    ori $t3, $t3, 'e'
+    
+    # Loop to fully populate grid with black tiles
+    
+smiley1:
+	sh $t1, 0($t0)		# Do the thing
+	addiu $t0, $t0, 2
+    bgt $t0, $t8, smiley1exit
+   	j smiley1
+
+smiley1exit:
+
+	# Eyes
+	sh $t2, 46($t9)
+	sh $t2, 66($t9)
+
+	sh $t2, 52($t9)
+	sh $t2, 72($t9)
+
+	# Mouth
+	sh $t3, 124($t9)
+	sh $t3, 146($t9)
+	sh $t3, 168($t9)
+	sh $t3, 170($t9)
+	sh $t3, 152($t9)
+	sh $t3, 134($t9)
+	
 	jr $ra
 
 ##############################

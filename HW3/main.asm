@@ -21,6 +21,7 @@ cells_array: .space 100
 .globl main
 
 main:
+	
 	# store the filename given on the command line
 	load_args()
 
