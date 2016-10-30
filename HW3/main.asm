@@ -26,7 +26,7 @@ main:
 	load_args()
 
 	# open the file we stored
-	lw	$a0,	filename
+	lw	$a0, filename
 	jal	open_file
 	# save the file descriptor that was returned
 	move	$s0,	$v0

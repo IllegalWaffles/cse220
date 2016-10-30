@@ -5,6 +5,25 @@
 ##############################################################
 .text
 
+.macro push(%reg)
+	sw %reg,($sp)	
+	addi $sp, $sp, 4
+.end_macro
+
+.macro pop(%reg)
+	addi $sp, $sp, -4
+	lw %reg,($sp)
+.end_macro
+
+.macro read_char(%reg)
+	move $a0, %reg
+	la $a1, buffer
+	li $a2, 1
+	li $v0, 14
+	syscall
+	lb $v1, buffer
+.end_macro
+
 ##############################
 # PART 1 FUNCTIONS
 ##############################
@@ -63,27 +82,57 @@ smiley1exit:
 
 open_file:
     #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ###########################################
+	# $a0 already contains the address of the string
+	li $a1, 0
+	li $a2, 0
+	
+	li $v0, 13
+	syscall
+
     jr $ra
 
 close_file:
     #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ###########################################
+	li $v0, 16
+	syscall
+
     jr $ra
 
 load_map:
     #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ###########################################
+    
+
     jr $ra
+
+#############################
+isWhitespace:
+
+	beq $a0, '\r', whtrue
+	beq $a0, '\t', whtrue
+	beq $a0, '\n', whtrue
+	beq $a0, ' ', whtrue
+
+whfail:
+	li $v0, 0
+	jr $ra	
+
+whtrue:
+	li $v0, 1
+	jr $ra	
+
+#############################
+isNumerical:
+
+	blt $a0, '0', numfail
+	bgt $a0, '9', numfail
+	
+numtrue:
+	li $v0, 1
+	jr $ra
+
+numfail:
+	li $v0, 0
+	jr $ra
 
 ##############################
 # PART 3 FUNCTIONS
@@ -142,6 +191,9 @@ search_cells:
 .align 2  # Align next items to word boundary
 cursor_row: .word -1
 cursor_col: .word -1
+
+coordinates: .space 300
+buffer: .ascii ""
 
 #place any additional data declarations here
 
