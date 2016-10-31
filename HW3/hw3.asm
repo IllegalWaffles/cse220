@@ -24,6 +24,40 @@
 	lb $v1, buffer
 .end_macro
 
+.macro inc(%reg)
+	addi %reg, %reg, 1
+.end_macro
+
+.macro pstring(%str)
+	li $v0, 4
+	la $a0, %str
+	syscall
+.end_macro
+
+.macro pbin(%reg)
+	li $v0, 35
+	move $a0, %reg
+	syscall
+.end_macro
+
+.macro pint(%reg)
+	li $v0, 1
+	move $a0, %reg
+	syscall
+.end_macro
+
+.macro pchar(%reg)
+	li $v0, 11
+	move $a0, %reg
+	syscall
+.end_macro
+
+.macro newline()
+	li $v0, 4
+	la $a0, newline
+	syscall
+.end_macro
+
 ##############################
 # PART 1 FUNCTIONS
 ##############################
@@ -101,7 +135,179 @@ close_file:
 load_map:
     #Define your code here
     
+    # $s0 - starting array location passed in
+    # $s1 - file descriptor
+    # $s2 - number of coordinates read
+    # $s3 - unused
+    # $s4 - last char
+    # $s5 - current char
+    
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    push($s4)
+    push($s5)
+    
+    move $s1, $a0		#TODO (make sure this is right)
+    move $s0, $a1
+    li $s2, 0
+    li $s3, 0
+    li $s4, 0
+    li $s5, 0
+    li $t0, 0			# Counter
+    
+    
+label0:
+	add $t1, $s0, $t0
+	sb $zero, ($t1)
+	addi $t0, $t0, 1
+	bgt $t0, 99, label1
+	j label0
+    
+label1:					#Byte array should be cleared now
+    read_char($s1)
+    beqz $v0, endfileparse	# EOF read. Stop parsing the file
+    move $s4, $v1
+    
+    pstring(charRead)
+    pint($s4)
+    pstring(space)
+    pchar($s4)
+    pstring(space)
+    pbin($s4)
+    pstring(newline)
+    
+    move $a0, $v1
+    jal isWhitespace	# Check if the character read was a whitespace
+    beq $v0, 1, label1	# If it is, read the next value (jump up)
+    
+    move $a0, $s4
+    jal isNumerical			# Check if it is numerical
+    beqz $v0, loadmapfail	# It was neither whitespace nor numerical. Error!
 
+	beq $s4, '0', zeroread	# If it was a zero, do something else
+	
+	read_char($s1)			# A number was read - check the next character
+	move $s5, $v1
+	
+	move $a0, $s5
+	jal isNumerical			# Check if its numerical
+	beq $v0, 1, loadmapfail # If it was, that's an error - number must be too big in this case
+	
+	move $a0, $s5			
+	jal isWhitespace		# Check if its a whitespace
+	beqz $v0, loadmapfail	# If it's not, must be an error. 
+	
+	li $t0, '0'
+	sub $t0, $s4, $t0
+	la $t1, coordinates
+	addu $t1, $t1, $s2
+	sb $t0, ($t1)
+	addi $s2, $s2, 1
+	j label1
+
+zeroread:
+
+	read_char($s1)	# A zero was read - check the next char.
+	move $s6, $v1	# Write a zero to output
+	beqz $v0, writeoutbeforefinishparse
+	
+	move $s4, $v1
+	beq $s4, '0', zeroread	# Another zero - go up to the top
+	
+	move $a0, $s4
+	jal isWhitespace
+	bnez $v0, label3		# If it is whitespace, we will do something else
+	
+	move $a0, $s4
+	jal isNumerical			# If it's a number, do something else.
+	bnez $v0, label4
+	j loadmapfail			# If it was none of the above, an error occurred.
+
+label3:						# Whitespace was read after a zero. Write a zero to coordinates
+	li $t0, '0'
+	sub $t0, $s4, $t0
+	la $t1, coordinates
+	addu $t1, $t1, $s2
+	sb $t0, ($t1)
+	addi $s2, $s2, 1
+	j label1
+	
+label4:						# A number was read AFTER a zero. Handle all possible cases now
+	read_char($s1)
+	move $s6, $s4			# Make sure to write out the final char
+	beqz $v0, writeoutbeforefinishparse
+	
+	move $s5, $v1
+	move $a0, $s5
+	jal isNumerical		
+	beq $v0, 1, loadmapfail	# Two numbers in a row means failure
+
+	move $a0, $s5
+	jal isWhitespace
+	beqz $v0, loadmapfail	# If it's not WS, then it must be an invalid char
+	j label3
+	
+writeoutbeforefinishparse:
+	li $t0, '0'
+	sub $t0, $s6, $t0
+	la $t1, coordinates
+	addu $t1, $t1, $s2
+	sb $t0, ($t1)
+	addi $s2, $s2, 1
+	
+endfileparse:
+	ori $t0, $s2, 1			# Check for odd # of values
+	beq $t0, 1, loadmapfail	
+	
+	li $t0, 0				# Counter
+	la $t1, coordinates
+	
+loop2:
+	lb $t2, ($t1)			# Load x
+	inc($t1)				# Increment coordinates pointer
+	inc($t0)				# Increment counter
+	
+	lb $t3, ($t1)			# Load y
+	inc($t1)				# Increment coordinates pointer
+	inc($t0)				# Increment counter
+
+	li $t9, 10
+	mult $t9, $t3			# (y * 10)
+	mflo $t4				
+	add $t5, $t4, $t2		# x + (y * 10) = offset
+	addu $t6, $s0, $t5		# addr + offset
+	
+	li $t8, 0
+	ori $t8, $t8, 32
+	sb $t8, ($t6)
+	
+	blt $t0, $s2, loop2
+
+    pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+    
+    li $v0, 1
+    jr $ra
+    
+loadmapfail:
+
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+    
+    li $v0, -1
     jr $ra
 
 #############################
@@ -193,6 +399,14 @@ cursor_row: .word -1
 cursor_col: .word -1
 
 coordinates: .space 300
+
+charRead: .asciiz "Character read:"
+newline: .asciiz "\n"
+space: .asciiz " "
+
+
+
+
 buffer: .ascii ""
 
 #place any additional data declarations here
