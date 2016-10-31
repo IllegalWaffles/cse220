@@ -52,6 +52,12 @@
 	syscall
 .end_macro
 
+.macro phex(%reg)
+	li $v0, 34
+	move $a0, %reg
+	syscall
+.end_macro
+
 .macro newline()
 	li $v0, 4
 	la $a0, newline
@@ -149,15 +155,14 @@ load_map:
     push($s3)
     push($s4)
     push($s5)
-    
-    move $s1, $a0		#TODO (make sure this is right)
+
+    move $s1, $a0		
     move $s0, $a1
     li $s2, 0
     li $s3, 0
     li $s4, 0
     li $s5, 0
     li $t0, 0			# Counter
-    
     
 label0:
 	add $t1, $s0, $t0
@@ -167,7 +172,11 @@ label0:
 	j label0
     
 label1:					#Byte array should be cleared now
-    read_char($s1)
+    
+	li $s4, 0
+	li $s5, 0
+
+	read_char($s1)
     beqz $v0, endfileparse	# EOF read. Stop parsing the file
     move $s4, $v1
     
@@ -179,7 +188,7 @@ label1:					#Byte array should be cleared now
     pbin($s4)
     pstring(newline)
     
-    move $a0, $v1
+    move $a0, $s4
     jal isWhitespace	# Check if the character read was a whitespace
     beq $v0, 1, label1	# If it is, read the next value (jump up)
     
@@ -190,8 +199,18 @@ label1:					#Byte array should be cleared now
 	beq $s4, '0', zeroread	# If it was a zero, do something else
 	
 	read_char($s1)			# A number was read - check the next character
+	move $s3, $s4
+	beqz $v0, writeoutbeforefinishparse
 	move $s5, $v1
 	
+	pstring(charRead)
+    pint($s5)
+    pstring(space)
+    pchar($s5)
+    pstring(space)
+    pbin($s5)
+    pstring(newline)
+
 	move $a0, $s5
 	jal isNumerical			# Check if its numerical
 	beq $v0, 1, loadmapfail # If it was, that's an error - number must be too big in this case
@@ -211,17 +230,28 @@ label1:					#Byte array should be cleared now
 zeroread:
 
 	read_char($s1)	# A zero was read - check the next char.
-	move $s6, $v1	# Write a zero to output
+	li $s3, '0'		# Write a zero to output
 	beqz $v0, writeoutbeforefinishparse
+
+	move $s5, $v1	
+
+	pstring(charRead)
+    pint($s5)
+    pstring(space)
+    pchar($s5)
+    pstring(space)
+    pbin($s5)
+    pstring(newline)
+
+	beq $s5, '0', zeroread	# Another zero - go up to the top
 	
-	move $s4, $v1
-	beq $s4, '0', zeroread	# Another zero - go up to the top
-	
-	move $a0, $s4
+	move $a0, $s5
 	jal isWhitespace
-	bnez $v0, label3		# If it is whitespace, we will do something else
-	
-	move $a0, $s4
+	beqz $v0, label5		# If it is whitespace, we write a zero
+	li $s4, 0
+	j label3
+	label5:					# If it is not, skip
+	move $a0, $s5
 	jal isNumerical			# If it's a number, do something else.
 	bnez $v0, label4
 	j loadmapfail			# If it was none of the above, an error occurred.
@@ -232,15 +262,32 @@ label3:						# Whitespace was read after a zero. Write a zero to coordinates
 	la $t1, coordinates
 	addu $t1, $t1, $s2
 	sb $t0, ($t1)
-	addi $s2, $s2, 1
+	inc($s2)
+
+	pstring(valueStored)
+	pint($t0)
+	newline()
+
 	j label1
 	
 label4:						# A number was read AFTER a zero. Handle all possible cases now
+
+	li $s4, '0'		# This label is reachable ONLY after a zero. Assume last number was a zero	
+
 	read_char($s1)
-	move $s6, $s4			# Make sure to write out the final char
+	move $s3, $s4			# Make sure to write out the final char
 	beqz $v0, writeoutbeforefinishparse
 	
 	move $s5, $v1
+
+	pstring(charRead)
+    pint($s5)
+    pstring(space)
+    pchar($s5)
+    pstring(space)
+    pbin($s5)
+    pstring(newline)
+
 	move $a0, $s5
 	jal isNumerical		
 	beq $v0, 1, loadmapfail	# Two numbers in a row means failure
@@ -248,31 +295,52 @@ label4:						# A number was read AFTER a zero. Handle all possible cases now
 	move $a0, $s5
 	jal isWhitespace
 	beqz $v0, loadmapfail	# If it's not WS, then it must be an invalid char
+
+	move $s4, $s5
+
 	j label3
 	
 writeoutbeforefinishparse:
 	li $t0, '0'
-	sub $t0, $s6, $t0
+	sub $t0, $s3, $t0
 	la $t1, coordinates
 	addu $t1, $t1, $s2
 	sb $t0, ($t1)
-	addi $s2, $s2, 1
+	inc($s2)
 	
+	pstring(charRead)
+    pint($s5)
+    pstring(space)
+    pchar($s5)
+    pstring(space)
+    pbin($s5)
+    pstring(newline)
+
 endfileparse:
-	ori $t0, $s2, 1			# Check for odd # of values
+	andi $t0, $s2, 1			# Check for odd # of values
 	beq $t0, 1, loadmapfail	
 	
+	blt $s2, 2, loadmapfail
+
 	li $t0, 0				# Counter
 	la $t1, coordinates
 	
 loop2:
-	lb $t2, ($t1)			# Load x
-	inc($t1)				# Increment coordinates pointer
-	inc($t0)				# Increment counter
-	
 	lb $t3, ($t1)			# Load y
 	inc($t1)				# Increment coordinates pointer
 	inc($t0)				# Increment counter
+	
+	pstring(loadedXVal)
+	pint($t2)
+	pstring(newline)
+
+	lb $t2, ($t1)			# Load x
+	inc($t1)				# Increment coordinates pointer
+	inc($t0)				# Increment counter
+
+	pstring(loadedYVal)
+	pint($t3)
+	pstring(newline)
 
 	li $t9, 10
 	mult $t9, $t3			# (y * 10)
@@ -280,11 +348,43 @@ loop2:
 	add $t5, $t4, $t2		# x + (y * 10) = offset
 	addu $t6, $s0, $t5		# addr + offset
 	
+	pstring(offset)
+	pint($t5)
+	pstring(newline)
+
 	li $t8, 0
 	ori $t8, $t8, 32
 	sb $t8, ($t6)
 	
 	blt $t0, $s2, loop2
+
+	li $t0, 0
+	li $t1, 0
+	li $t9, 10
+
+###################
+loopa:
+
+	li $t1, 0
+loopb:
+
+	mult $t0, $t9
+	mflo $t2
+	add $t2, $t2, $t1
+	addu $t2, $s0, $t2 
+	lb $t2, ($t2)
+
+	pint($t2)
+	pstring(space)
+
+	inc($t1)
+	blt $t1, 10, loopb
+
+	newline()
+
+	inc($t0)
+	blt $t0, 10, loopa
+###################
 
     pop($s5)
 	pop($s4)
@@ -403,9 +503,12 @@ coordinates: .space 300
 charRead: .asciiz "Character read:"
 newline: .asciiz "\n"
 space: .asciiz " "
-
-
-
+zeroReadS: .asciiz "A zero was read"
+loadedXVal: .asciiz "Loaded X Value:"
+loadedYVal: .asciiz "Loaded Y Value:"
+offset: .asciiz "Calculated offset:"
+coordsRead: .asciiz "Coordinates read:"
+valueStored: .asciiz "Value stored:"
 
 buffer: .ascii ""
 
