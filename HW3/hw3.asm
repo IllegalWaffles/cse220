@@ -180,13 +180,13 @@ label1:					#Byte array should be cleared now
     beqz $v0, endfileparse	# EOF read. Stop parsing the file
     move $s4, $v1
     
-    pstring(charRead)
-    pint($s4)
-    pstring(space)
-    pchar($s4)
-    pstring(space)
-    pbin($s4)
-    pstring(newline)
+    #pstring(charRead)
+    #pint($s4)
+    #pstring(space)
+    #pchar($s4)
+    #pstring(space)
+    #pbin($s4)
+    #pstring(newline)
     
     move $a0, $s4
     jal isWhitespace	# Check if the character read was a whitespace
@@ -203,13 +203,13 @@ label1:					#Byte array should be cleared now
 	beqz $v0, writeoutbeforefinishparse
 	move $s5, $v1
 	
-	pstring(charRead)
-    pint($s5)
-    pstring(space)
-    pchar($s5)
-    pstring(space)
-    pbin($s5)
-    pstring(newline)
+	#pstring(charRead)
+    #pint($s5)
+    #pstring(space)
+    #pchar($s5)
+    #pstring(space)
+    #pbin($s5)
+    #pstring(newline)
 
 	move $a0, $s5
 	jal isNumerical			# Check if its numerical
@@ -235,26 +235,30 @@ zeroread:
 
 	move $s5, $v1	
 
-	pstring(charRead)
-    pint($s5)
-    pstring(space)
-    pchar($s5)
-    pstring(space)
-    pbin($s5)
-    pstring(newline)
+	#pstring(charRead)
+    #pint($s5)
+    #pstring(space)
+    #pchar($s5)
+    #pstring(space)
+    #pbin($s5)
+    #pstring(newline)
 
 	beq $s5, '0', zeroread	# Another zero - go up to the top
 	
 	move $a0, $s5
 	jal isWhitespace
 	beqz $v0, label5		# If it is whitespace, we write a zero
-	li $s4, 0
+	li $s4, '0'
 	j label3
 	label5:					# If it is not, skip
 	move $a0, $s5
 	jal isNumerical			# If it's a number, do something else.
-	bnez $v0, label4
+	bnez $v0, label6
 	j loadmapfail			# If it was none of the above, an error occurred.
+	label6:
+	move $s4, $s5
+	j label4
+	
 
 label3:						# Whitespace was read after a zero. Write a zero to coordinates
 	li $t0, '0'
@@ -264,15 +268,15 @@ label3:						# Whitespace was read after a zero. Write a zero to coordinates
 	sb $t0, ($t1)
 	inc($s2)
 
-	pstring(valueStored)
-	pint($t0)
-	newline()
+	#pstring(valueStored)
+	#pint($t0)
+	#newline()
 
 	j label1
 	
 label4:						# A number was read AFTER a zero. Handle all possible cases now
 
-	li $s4, '0'		# This label is reachable ONLY after a zero. Assume last number was a zero	
+	#li $s4, '0'		# This label is reachable ONLY after a zero. Assume last number was a zero	
 
 	read_char($s1)
 	move $s3, $s4			# Make sure to write out the final char
@@ -280,13 +284,13 @@ label4:						# A number was read AFTER a zero. Handle all possible cases now
 	
 	move $s5, $v1
 
-	pstring(charRead)
-    pint($s5)
-    pstring(space)
-    pchar($s5)
-    pstring(space)
-    pbin($s5)
-    pstring(newline)
+	#pstring(charRead)
+    #pint($s5)
+    #pstring(space)
+    #pchar($s5)
+    #pstring(space)
+    #pbin($s5)
+    #pstring(newline)
 
 	move $a0, $s5
 	jal isNumerical		
@@ -296,7 +300,7 @@ label4:						# A number was read AFTER a zero. Handle all possible cases now
 	jal isWhitespace
 	beqz $v0, loadmapfail	# If it's not WS, then it must be an invalid char
 
-	move $s4, $s5
+	#move $s4, $s5
 
 	j label3
 	
@@ -308,13 +312,13 @@ writeoutbeforefinishparse:
 	sb $t0, ($t1)
 	inc($s2)
 	
-	pstring(charRead)
-    pint($s5)
-    pstring(space)
-    pchar($s5)
-    pstring(space)
-    pbin($s5)
-    pstring(newline)
+	#pstring(valueStored)
+    #pint($t0)
+    #pstring(space)
+    #pchar($t0)
+    #pstring(space)
+    #pbin($t0)
+    #pstring(newline)
 
 endfileparse:
 	andi $t0, $s2, 1			# Check for odd # of values
@@ -330,17 +334,17 @@ loop2:
 	inc($t1)				# Increment coordinates pointer
 	inc($t0)				# Increment counter
 	
-	pstring(loadedXVal)
-	pint($t2)
-	pstring(newline)
+	#pstring(loadedXVal)
+	#pint($t3)
+	#pstring(newline)
 
 	lb $t2, ($t1)			# Load x
 	inc($t1)				# Increment coordinates pointer
 	inc($t0)				# Increment counter
 
-	pstring(loadedYVal)
-	pint($t3)
-	pstring(newline)
+	#pstring(loadedYVal)
+	#pint($t2)
+	#pstring(newline)
 
 	li $t9, 10
 	mult $t9, $t3			# (y * 10)
@@ -348,9 +352,9 @@ loop2:
 	add $t5, $t4, $t2		# x + (y * 10) = offset
 	addu $t6, $s0, $t5		# addr + offset
 	
-	pstring(offset)
-	pint($t5)
-	pstring(newline)
+	#pstring(offset)
+	#pint($t5)
+	#pstring(newline)
 
 	li $t8, 0
 	ori $t8, $t8, 32
@@ -373,6 +377,8 @@ loopb:
 	add $t2, $t2, $t1
 	addu $t2, $s0, $t2 
 	lb $t2, ($t2)
+
+	
 
 	pint($t2)
 	pstring(space)
