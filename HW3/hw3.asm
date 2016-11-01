@@ -164,12 +164,23 @@ load_map:
     li $s5, 0
     li $t0, 0			# Counter
     
+    move $a0, $s0
+    jal printArray
+    
+    newline()
+    
 label0:
 	add $t1, $s0, $t0
 	sb $zero, ($t1)
-	addi $t0, $t0, 1
-	bgt $t0, 99, label1
+	inc($t0)
+	bgt $t0, 99, labelabc
 	j label0
+
+labelabc:
+  
+    move $a0, $s0
+    jal printArray
+    newline()
     
 label1:					#Byte array should be cleared now
     
@@ -366,7 +377,6 @@ loop2:
 	li $t1, 0
 	li $t9, 10
 
-###################
 loopa:
 
 	li $t1, 0
@@ -375,13 +385,78 @@ loopb:
 	mult $t0, $t9
 	mflo $t2
 	add $t2, $t2, $t1
-	addu $t2, $s0, $t2 
-	lb $t2, ($t2)
-
+	addu $t2, $s0, $t2 	# $t2 holds the address of the current cell
+	#lb $t2, ($t2)
 	
+	li $t3, 0	# $t3 is our blank byte
+	# row stored in $t0
+	# col stored in $t1
+	
+	bnez $t0, rowcase1
+		bnez $t1, colcase01
+			ori $t3, $t3, 0xB
+		j ifexit
+	colcase01:
+		bne $t1, 9, colcase02
+			ori $t3, $t3, 0x16
+		j ifexit
+	colcase02:
+			ori $t3, $t3, 0x1F
+		j ifexit
+rowcase1:
+	bne $t0, 9, rowcase2
+		bnez $t1, colcase11
+			ori $t3, $t3, 0x68
+		j ifexit
+	colcase11:
+		bne $t1, 9, colcase12
+			ori $t3, $t3, 0xD0
+		j ifexit
+	colcase12:
+			ori $t3, $t3, 0xF1
+		j ifexit
+rowcase2:
+		bnez $t1, colcase21
+			ori $t3, $t3, 0x6B
+		j ifexit
+	colcase21:
+		bne $t1, 9, colcase22
+			ori $t3, $t3, 0xD6
+		j ifexit
+	colcase22:
+			ori $t3, $t3, 0xFF
+		j ifexit
 
-	pint($t2)
+ifexit:
+
+	# $t3 is our mask now
+	
+	li $t6, 0
+	li $t4, 256
+	
+loop3:
+	srl $t4, $t4, 1		# Shift our mask over by 1
+	blez $t4, loop3exit
+	and $t5, $t3, $t4	# See if this cell is included in the mask
+	beqz $t5, loop3		# If this cell isn't in the mask, skip it
+	
+	move $a0, $t4		
+	jal getNum			# Get the offset for this cell
+	add $t5, $v0, $t2	# Add it to this cell's address
+	lb $t5, ($t5)		# Load the data at that cell's address
+	
+	andi $t5, $t5, 32	# Is there a bomb there?
+	beqz $t5, loop3		# If there is...
+	inc($t6)			# Then 
+	
+	j loop3
+loop3exit:	
+	
+	# $t6 now has the number of bombs adjacent to the thing
+	pint($t6)
 	pstring(space)
+	#pint($t2)
+	#pstring(space)
 
 	inc($t1)
 	blt $t1, 10, loopb
@@ -390,7 +465,6 @@ loopb:
 
 	inc($t0)
 	blt $t0, 10, loopa
-###################
 
     pop($s5)
 	pop($s4)
@@ -444,6 +518,68 @@ numtrue:
 
 numfail:
 	li $v0, 0
+	jr $ra
+############################
+getNum:
+
+	bne $a0, 128, gn0
+	li $v0, -11
+	jr $ra
+gn0:bne $a0, 64, gn1
+	li $v0, -10
+	jr $ra
+gn1:bne $a0, 32, gn2
+	li $v0, -9
+	jr $ra
+gn2:bne $a0, 16, gn3
+	li $v0, -1
+	jr $ra
+gn3:bne $a0, 8, gn4
+	li $v0, 1
+	jr $ra
+gn4:bne $a0, 4, gn5
+	li $v0, 9
+	jr $ra
+gn5:bne $a0, 2, gn6
+	li $v0, 10
+	jr $ra
+gn6:bne $a0, 1, gn7
+	li $v0, 11
+	jr $ra
+gn7:
+	li $v0, -99999
+	jr $ra
+########################
+printArray:
+
+	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)
+	move $s3, $a0
+	li $s0, 0
+	li $s2, 10
+
+pa1:
+	add $s3, $s0, $s3
+	inc($s0)
+	lb $s1, ($s3)
+	
+	pint($s1)
+	pstring(space)
+	
+	div $s0, $s2
+	mfhi $s1
+	bnez $s1, pa2
+	newline()
+pa2:	
+	
+	blt $s0, 100, pa1
+
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
 	jr $ra
 
 ##############################
