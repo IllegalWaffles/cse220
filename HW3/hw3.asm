@@ -163,24 +163,13 @@ load_map:
     li $s4, 0
     li $s5, 0
     li $t0, 0			# Counter
-    
-    move $a0, $s0
-    jal printArray
-    
-    newline()
-    
+
 label0:
 	add $t1, $s0, $t0
 	sb $zero, ($t1)
 	inc($t0)
-	bgt $t0, 99, labelabc
+	bgt $t0, 99, label1
 	j label0
-
-labelabc:
-  
-    move $a0, $s0
-    jal printArray
-    newline()
     
 label1:					#Byte array should be cleared now
     
@@ -367,10 +356,10 @@ loop2:
 	#pint($t5)
 	#pstring(newline)
 
-	li $t8, 0
+	lb $t8, ($t6)
 	ori $t8, $t8, 32
 	sb $t8, ($t6)
-	
+
 	blt $t0, $s2, loop2
 
 	li $t0, 0
@@ -413,7 +402,7 @@ rowcase1:
 			ori $t3, $t3, 0xD0
 		j ifexit
 	colcase12:
-			ori $t3, $t3, 0xF1
+			ori $t3, $t3, 0xF8
 		j ifexit
 rowcase2:
 		bnez $t1, colcase21
@@ -447,16 +436,19 @@ loop3:
 	
 	andi $t5, $t5, 32	# Is there a bomb there?
 	beqz $t5, loop3		# If there is...
-	inc($t6)			# Then 
+	inc($t6)			# Then increment the bomb counter for this cell
 	
 	j loop3
 loop3exit:	
 	
 	# $t6 now has the number of bombs adjacent to the thing
-	pint($t6)
-	pstring(space)
-	#pint($t2)
+	lb $t3, ($t2)
+	or $t3, $t3, $t6
+	
+	#pint($t3)
 	#pstring(space)
+
+	sb $t3, ($t2)
 
 	inc($t1)
 	blt $t1, 10, loopb
@@ -465,6 +457,9 @@ loop3exit:
 
 	inc($t0)
 	blt $t0, 10, loopa
+
+	li $t0, 0
+	sb $t0, cursor_row
 
     pop($s5)
 	pop($s4)
@@ -498,7 +493,6 @@ isWhitespace:
 	beq $a0, '\n', whtrue
 	beq $a0, ' ', whtrue
 
-whfail:
 	li $v0, 0
 	jr $ra	
 
@@ -556,14 +550,15 @@ printArray:
 	push($s1)
 	push($s2)
 	push($s3)
+	push($s4)
 	move $s3, $a0
 	li $s0, 0
 	li $s2, 10
 
 pa1:
-	add $s3, $s0, $s3
+	add $s4, $s0, $s3
 	inc($s0)
-	lb $s1, ($s3)
+	lb $s1, ($s4)
 	
 	pint($s1)
 	pstring(space)
@@ -576,6 +571,7 @@ pa2:
 	
 	blt $s0, 100, pa1
 
+	pop($s4)
 	pop($s3)
 	pop($s2)
 	pop($s1)
@@ -651,6 +647,7 @@ loadedYVal: .asciiz "Loaded Y Value:"
 offset: .asciiz "Calculated offset:"
 coordsRead: .asciiz "Coordinates read:"
 valueStored: .asciiz "Value stored:"
+dash: .asciiz "_"
 
 buffer: .ascii ""
 
