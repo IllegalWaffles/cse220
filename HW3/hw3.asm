@@ -445,21 +445,21 @@ loop3exit:
 	lb $t3, ($t2)
 	or $t3, $t3, $t6
 	
-	#pint($t3)
-	#pstring(space)
+	pint($t3)
+	pstring(space)
 
 	sb $t3, ($t2)
 
 	inc($t1)
-	blt $t1, 10, loopb
+	blt $t1, 10, loopb	# Close inner loop
 
 	newline()
 
 	inc($t0)
-	blt $t0, 10, loopa
+	blt $t0, 10, loopa	# Close outer loop
 
-	li $t0, 0
-	sb $t0, cursor_row
+	sw $zero, cursor_row	
+	sw $zero, cursor_col
 
     pop($s5)
 	pop($s4)
@@ -583,22 +583,237 @@ pa2:
 ##############################
 
 init_display:
-    #Define your code here
+    
+    li $t0, 0xFFFF0000	# Base MMIO addr
+    li $t1, 0			# Counter
+    
+    # Build gray square
+    li $t2, 0x77
+    sll $t2, $t2, 8
+    ori $t2, $t2, '\0'
+    
+initloop:
+	add $t3, $t0, $t1
+	sh $t2, ($t3)
+	addi $t1, $t1, 2
+	ble $t1, 198, initloop
+    
+    lw $t3, cursor_row
+    lw $t4, cursor_col
+    
+    li $t2, 20
+    
+    mult $t3, $t2
+    mflo $t2			# (row * 20)
+    sll $t4, $t4, 1		# (col * 2)
+    add $t2, $t2, $t4	# (row * 20) + (col * 2)
+    addu $t0, $t0, $t2	# addr + above offset
+    
+    li $t3, 0xB0		# Set yellow background
+    sll $t3, $t3, 8		# Shift it over
+    lh $t1, ($t0)		# Load the current configuration
+    andi $t1, $t1, 0xFF
+    or $t1, $t1, $t3	# Set the yellow background
+    sh $t1, ($t0)		# Store the tile back
+    
     jr $ra
-
+############################################
 set_cell:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ###########################################
+    
+    # $t0 - row
+    # $t1 - col
+    # $t2 - ch (char)
+    # $t3 - foreground byte
+    # $t4 - background byte
+    
+    move $t0, $a0
+    move $t1, $a1
+    move $t2, $a2
+    move $t3, $a3
+    pop($t4)
+    push($t4)
+    
+    blez $t0, setcellfail
+    bgt $t0, 9, setcellfail
+    
+    blez $t1, setcellfail
+    bgt $t1, 9, setcellfail
+    
+    blez $t3, setcellfail
+    bgt $t3, 15, setcellfail
+    
+    blez $t4, setcellfail
+    bgt $t4, 15, setcellfail
+    
+    # Make sure our fg and bg are exactly 4 bits each, and the char is 1 byte
+    andi $t3, $t3, 0xF
+    andi $t4, $t4, 0xF
+    andi $t2, $t2, 0xFF
+    
+    sll $t4, $t4, 4		# Shift the bg over 4 bits
+    or $t4, $t4, $t3	# Place fg in the 4 bit space
+    sll $t4, $t4, 8		# Shift everything over by a byte to make room for the char
+    or $t4, $t4, $t2	# Add the char byte to our value above
+    
+    li $t5, 0xFFFF0000	# Base MMIO address
+    li $t6, 20
+    
+    # Calculate address here, store in $t5
+    mult $t0, $t6
+    mflo $t0			# (row * 20)
+    sll $t1, $t1, 1		# (col * 2)
+    add $t0, $t0, $t1	# (row * 20) + (col * 2)
+    addu $t5, $t5, $t0	# addr + above offset
+    
+    sb $t4, ($t5)
+    
+    li $v0, 0
     jr $ra
 
+setcellfail:
+
+	li $v0, -1
+	jr $ra
+############################
 reveal_map:
-    #Define your code here
+    
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    push($s4)
+    push($s5)
+    push($s6)
+    push($s7)
+    
+    move $s0, $a1	# pointer to byte array
+    move $a0, $a0	# Game state
+    
+    # s1 - bomb
+    # s2 - exploded bomb
+    # s3 - number
+    # s4 - incorrectflag
+    # s5 - correctflag
+    # s6 - blank
+    # s7 - counter
+    
+    li $s1, 0x07
+    sll $s1, $s1, 8
+    ori $s1, $s1, 'b'
+    
+    li $s2, 0x9F
+    sll $s2, $s2, 8
+    ori $s2, $s2, 'e'
+    
+    li $s3, 0x0D
+    sll $s3, $s3, 8
+    ori $s3, $s3, 0
+    
+    li $s4, 0x9C
+    sll $s4, $s4, 8
+    ori $s4, $s4, 'f'
+    
+    li $s5, 0x7C
+    sll $s5, $s5, 8
+    ori $s5, $s5, 'f'
+    
+    li $s6, 0x0F
+    sll $s6, $s6, 8
+    ori $s6, $s6, '\0'
+    
+    beq $a0, 1, revealwon
+    beq $a0, -1, reveallost
+    
+    beqz $a0, exitrevealmap
+    
+revealwon:
+	jal smiley
+	j exitrevealmap
+    
+reveallost:
+	
+	li $t0, 0			# Counter (offset)
+	
+	revealloop1:
+	addu $t1, $t0, $t7		# Calculate the address
+	lb $t1, ($t1)			# $t1 contains that tile's data
+	
+	move $a0, $t1
+	jal calc2byteoffset
+	move $t6, $v0					
+	addiu $t6, $t6, 0xFFFF0000	# t6 contains the memory address in mmio
+	
+	andi $t2, $t1, 16		# $t2 contains if it is flagged
+	srl $t2, $t2, 4
+	andi $t3, $t1, 32		# $t3 contains if it is a bomb
+	srl $t3, $t3, 5			
+	andi $t4, $t1, 0xF 		# $t4 contains the number of surrounding bombs
+						
+							# First check if it is flagged
+	beqz $t2, revealmapbomb
+		and $t5, $t2, $t3	# If its a correct flag
+		beqz $t5, incorrectflag	# Write correct flag
+			sh $s5, ($t6)
+		j finishtile
+	incorrectflag:			# If its an incorrect flag
+			sh $s4, ($t6)	# Write incorrect flag
+		j finishtile
+		
+							# Else, check if it is a bomb
+	revealmapbomb:	
+	
+	
+							# Else, check how many bombs are nearby
+							# If > 0, write that number to the cell
+							# If == 0, it must be an empty cell
+	
+	finishtile:
+	inc($t0)
+	blt $t0, 100, revealloop1
+	
+							# Overwrite cursor to red explodey thing
+	
+	j exitrevealmap
+
+exitrevealmap:
+    pop($s7)
+    pop($s6)
+    pop($s5)
+    pop($s4)
+    pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
+    pop($ra)
+    
     jr $ra
 
+##############################
+calc2byteoffset:
 
+	# $a0 has offset
+	push($s0)
+	push($s1)
+	push($s2)
+	li $s0, 10
+	
+	div $a0, $s0	
+	mflo $s1		# row
+	mfhi $s2		# col
+	
+	sll $s0, $s0, 1
+	
+	mult $s1, $s0
+	mflo $s1
+	sll $s2, $s2, 1
+	add $v0, $s2, $s1
+	
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	
+	jr $ra
 ##############################
 # PART 4 FUNCTIONS
 ##############################
