@@ -445,15 +445,15 @@ loop3exit:
 	lb $t3, ($t2)
 	or $t3, $t3, $t6
 	
-	pint($t3)
-	pstring(space)
+	#pint($t3)
+	#pstring(space)
 
 	sb $t3, ($t2)
 
 	inc($t1)
 	blt $t1, 10, loopb	# Close inner loop
 
-	newline()
+	#newline()
 
 	inc($t0)
 	blt $t0, 10, loopa	# Close outer loop
@@ -626,23 +626,22 @@ set_cell:
     # $t3 - foreground byte
     # $t4 - background byte
     
-    move $t0, $a0
-    move $t1, $a1
+    move $t1, $a0
+    move $t0, $a1
     move $t2, $a2
     move $t3, $a3
-    pop($t4)
-    push($t4)
+    lw $t4, -4($sp)
     
-    blez $t0, setcellfail
+    bltz  $t0, setcellfail
     bgt $t0, 9, setcellfail
     
-    blez $t1, setcellfail
+    bltz $t1, setcellfail
     bgt $t1, 9, setcellfail
     
-    blez $t3, setcellfail
+    bltz $t3, setcellfail
     bgt $t3, 15, setcellfail
     
-    blez $t4, setcellfail
+    bltz $t4, setcellfail
     bgt $t4, 15, setcellfail
     
     # Make sure our fg and bg are exactly 4 bits each, and the char is 1 byte
@@ -665,7 +664,7 @@ set_cell:
     add $t0, $t0, $t1	# (row * 20) + (col * 2)
     addu $t5, $t5, $t0	# addr + above offset
     
-    sb $t4, ($t5)
+    sh $t4, ($t5)
     
     li $v0, 0
     jr $ra
@@ -692,29 +691,11 @@ reveal_map:
     
 	# s1 - col
 	# s2 - row
-    
-	# s1 - bomb
-    #li $s1, 0x07
-    #ori $s1, $s1, 'b'
-    
-	# s2 - exploded bomb
-    #li $s2, 0x9F
-    #ori $s2, $s2, 'e'
-    
-	# s3 - number
-    #li $s3, 0x0D
-    
-	# s4 - incorrectflag
-    #li $s4, 0x9C
-    #ori $s4, $s4, 'f'
-    
-	# s5 - correctflag
-    #li $s5, 0xAC
-    #ori $s5, $s5, 'f'
-    
-	# s6 - blank
-    #li $s6, 0x0F
-    #ori $s6, $s6, '\0'
+    # s3 - counter
+    # s4 - byte data
+    # s5 - flagged
+    # s6 - bomb
+    # s7 - number of adjacent bombs
     
     beq $a0, 1, revealwon
     beq $a0, -1, reveallost
@@ -727,39 +708,33 @@ revealwon:
     
 reveallost:
 	
-	li $t0, 0			# Counter (offset)
+	li $s3, 0			# Counter (offset)
 	li $t9, 10
 
 	revealloop1:
-	addu $t1, $t0, $s0		# Calculate the address
-	lb $t1, ($t1)			# $t1 contains that tile's data
+	addu $s4, $s3, $s0		# Calculate the address
+	lb $s4, ($s4)			# $s4 contains that tile's data
 	
 	# Calculate column and row
-	div $t0, $t9
+	div $s3, $t9
 	mfhi $s2				# Row
 	mflo $s1				# Col
 
 	# Code to test flags
-	#push($s0)
-	#div $t0, $t9
-	#mfhi $s0
-	#bne $s0, 6, skipflag
-	#ori $t1, $t1, 0x10
-#skipflag:
-	#pop($s0)
-
-	sll $t6, $t0, 1			# Calculate MMIO offset
-	addiu $t6, $t6, 0xFFFF0000	# t6 contains the memory address in mmio
 	
-	andi $t2, $t1, 16		# $t2 contains if it is flagged
-	srl $t2, $t2, 4
-	andi $t3, $t1, 32		# $t3 contains if it is a bomb
-	srl $t3, $t3, 5			
-	andi $t4, $t1, 0xF 		# $t4 contains the number of surrounding bombs
+	bne $s2, 6, skipflag
+	ori $s4, $s4, 0x10
+skipflag:
+	
+	andi $s5, $s4, 16		# $s5 contains if it is flagged
+	srl $s5, $s5, 4
+	andi $s6, $s4, 32		# $s6 contains if it is a bomb
+	srl $s6, $s6, 5			
+	andi $s7, $s4, 0xF 		# $s7 contains the number of surrounding bombs
 							# First check if it is flagged
-	beqz $t2, revealmapbomb
-		and $t5, $t2, $t3	# If its a correct flag
-		beqz $t5, incorrectflag	# Write correct flag
+	beqz $s5, revealmapbomb
+		and $t0, $s6, $s5	# If its a correct flag
+		beqz $t0, incorrectflag	# Write correct flag
 			#sh $s5, ($t6)
 			move $a0, $s2
 			move $a1, $s1
@@ -770,7 +745,7 @@ reveallost:
 			jal set_cell
 			pop($t8)
 			j finishtile
-		incorrectflag:			# If its an incorrect flag
+		incorrectflag:		# If its an incorrect flag
 			#sh $s4, ($t6)	# Write incorrect flag
 			move $a0, $s2
 			move $a1, $s1
@@ -782,7 +757,7 @@ reveallost:
 			pop($t8)
 			j finishtile	
 	revealmapbomb:			# Else, check if it is a bomb
-	beqz $t3, revealmapnumber
+	beqz $s6, revealmapnumber
 		#sh $s1, ($t6)
 		move $a0, $s2
 		move $a1, $s1
@@ -794,11 +769,11 @@ reveallost:
 		pop($t8)
 		j finishtile
 	revealmapnumber:		# Else, check how many bombs are nearby
-		blez $t4, revealmapempty	# If > 0, write that number to the cell
+		blez $s7, revealmapempty	# If > 0, write that number to the cell
 		# sh $s3, ($t6)
 		move $a0, $s2
 		move $a1, $s1
-		addi $a2, $t4, '0'
+		addi $a2, $s7, '0'
 		li $a3, 0xD
 		li $t8, 0x0
 		push($t8)
@@ -816,23 +791,21 @@ reveallost:
 		jal set_cell
 		pop($t8)
 	finishtile:
-	inc($t0)
-	blt $t0, 100, revealloop1
 	
-	lw $s0, cursor_row				# Overwrite cursor to red explodey thing
-	lw $s1, cursor_col
-	li $s2, 20
+	inc($s3)
+	blt $s3, 100, revealloop1
 	
-	mult $s0, $s2					
-	mflo $s0
-	sll $s1, $s1, 1
-	add $s2, $s1, $s0
-	addiu $s2, $s2, 0xFFFF0000
+	lw $a0, cursor_col				# Overwrite cursor to red explodey thing
+	lw $a1, cursor_row
+	li $a2, 'e'
+	li $a3, 0xF
+	li $t0, 0x9
+	push($t0)
+	jal set_cell
+	pop($t0)
 	
-	li $s3, 0x9F
-    sll $s3, $s3, 8
-    ori $s3, $s3, 'e'
-	sh $s3, ($s2)
+	#li $s3, 0x9F
+    #ori $s3, $s3, 'e'
 	
 	j exitrevealmap
 
