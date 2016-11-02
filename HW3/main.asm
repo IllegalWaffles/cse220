@@ -45,6 +45,12 @@ main:
 	# set the display to all covered and init the cursor
 	jal	init_display
 
+	li $a0, -1
+	la $a1, cells_array
+	jal reveal_map
+	j exit
+
+
 	while_game:
 		# prompt player for input
 		la	$a0,	input_message

@@ -458,8 +458,8 @@ loop3exit:
 	inc($t0)
 	blt $t0, 10, loopa	# Close outer loop
 
-	sw $zero, cursor_row	
-	sw $zero, cursor_col
+	sw $0, cursor_row	
+	sw $0, cursor_col
 
     pop($s5)
 	pop($s4)
@@ -714,7 +714,7 @@ reveal_map:
     sll $s4, $s4, 8
     ori $s4, $s4, 'f'
     
-    li $s5, 0x7C
+    li $s5, 0xAC
     sll $s5, $s5, 8
     ori $s5, $s5, 'f'
     
@@ -734,14 +734,22 @@ revealwon:
 reveallost:
 	
 	li $t0, 0			# Counter (offset)
-	
+	li $t9, 10
+
 	revealloop1:
-	addu $t1, $t0, $t7		# Calculate the address
+	addu $t1, $t0, $s0		# Calculate the address
 	lb $t1, ($t1)			# $t1 contains that tile's data
 	
-	move $a0, $t1
-	jal calc2byteoffset
-	move $t6, $v0					
+	# Code to test flags
+	#push($s0)
+	#div $t0, $t9
+	#mfhi $s0
+	#bne $s0, 6, skipflag
+	#ori $t1, $t1, 0x10
+#skipflag:
+	#pop($s0)
+
+	sll $t6, $t0, 1			# Calculate MMIO offset
 	addiu $t6, $t6, 0xFFFF0000	# t6 contains the memory address in mmio
 	
 	andi $t2, $t1, 16		# $t2 contains if it is flagged
@@ -765,8 +773,10 @@ reveallost:
 	revealmapnumber:		# Else, check how many bombs are nearby
 		blez $t4, revealmapempty	# If > 0, write that number to the cell
 		addi $t4, $t4, '0'
+		push($s3)			# Save $s3
 		or $s3, $s3, $t4
 		sh $s3, ($t6)
+		pop($s3)			# Restore $s3
 		j finishtile
 	revealmapempty:			# If == 0, it must be an empty cell
 		sh $s6, ($t6)
@@ -779,7 +789,7 @@ reveallost:
 	lw $s1, cursor_col
 	li $s2, 20
 	
-	mult $s0, $s2
+	mult $s0, $s2					
 	mflo $s0
 	sll $s1, $s1, 1
 	add $s2, $s1, $s0
@@ -806,31 +816,6 @@ exitrevealmap:
     
     jr $ra
 
-##############################
-calc2byteoffset:
-
-	# $a0 has offset
-	push($s0)
-	push($s1)
-	push($s2)
-	li $s0, 10
-	
-	div $a0, $s0	
-	mflo $s1		# row
-	mfhi $s2		# col
-	
-	sll $s0, $s0, 1
-	
-	mult $s1, $s0
-	mflo $s1
-	sll $s2, $s2, 1
-	add $v0, $s2, $s1
-	
-	pop($s2)
-	pop($s1)
-	pop($s0)
-	
-	jr $ra
 ##############################
 # PART 4 FUNCTIONS
 ##############################
