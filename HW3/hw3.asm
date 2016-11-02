@@ -690,37 +690,31 @@ reveal_map:
     move $s0, $a1	# pointer to byte array
     move $a0, $a0	# Game state
     
-    # s1 - bomb
-    # s2 - exploded bomb
-    # s3 - number
-    # s4 - incorrectflag
-    # s5 - correctflag
-    # s6 - blank
-    # s7 - counter
+	# s1 - col
+	# s2 - row
     
-    li $s1, 0x07
-    sll $s1, $s1, 8
-    ori $s1, $s1, 'b'
+	# s1 - bomb
+    #li $s1, 0x07
+    #ori $s1, $s1, 'b'
     
-    li $s2, 0x9F
-    sll $s2, $s2, 8
-    ori $s2, $s2, 'e'
+	# s2 - exploded bomb
+    #li $s2, 0x9F
+    #ori $s2, $s2, 'e'
     
-    li $s3, 0x0D
-    sll $s3, $s3, 8
-    ori $s3, $s3, 0
+	# s3 - number
+    #li $s3, 0x0D
     
-    li $s4, 0x9C
-    sll $s4, $s4, 8
-    ori $s4, $s4, 'f'
+	# s4 - incorrectflag
+    #li $s4, 0x9C
+    #ori $s4, $s4, 'f'
     
-    li $s5, 0xAC
-    sll $s5, $s5, 8
-    ori $s5, $s5, 'f'
+	# s5 - correctflag
+    #li $s5, 0xAC
+    #ori $s5, $s5, 'f'
     
-    li $s6, 0x0F
-    sll $s6, $s6, 8
-    ori $s6, $s6, '\0'
+	# s6 - blank
+    #li $s6, 0x0F
+    #ori $s6, $s6, '\0'
     
     beq $a0, 1, revealwon
     beq $a0, -1, reveallost
@@ -740,6 +734,11 @@ reveallost:
 	addu $t1, $t0, $s0		# Calculate the address
 	lb $t1, ($t1)			# $t1 contains that tile's data
 	
+	# Calculate column and row
+	div $t0, $t9
+	mfhi $s2				# Row
+	mflo $s1				# Col
+
 	# Code to test flags
 	#push($s0)
 	#div $t0, $t9
@@ -761,26 +760,61 @@ reveallost:
 	beqz $t2, revealmapbomb
 		and $t5, $t2, $t3	# If its a correct flag
 		beqz $t5, incorrectflag	# Write correct flag
-			sh $s5, ($t6)
+			#sh $s5, ($t6)
+			move $a0, $s2
+			move $a1, $s1
+			li $a2, 'f'
+			li $a3, 0xC
+			li $t8, 0xA
+			push($t8)
+			jal set_cell
+			pop($t8)
 			j finishtile
 		incorrectflag:			# If its an incorrect flag
-			sh $s4, ($t6)	# Write incorrect flag
+			#sh $s4, ($t6)	# Write incorrect flag
+			move $a0, $s2
+			move $a1, $s1
+			li $a2, 'f'
+			li $a3, 0xC
+			li $t8, 0x9
+			push($t8)
+			jal set_cell
+			pop($t8)
 			j finishtile	
 	revealmapbomb:			# Else, check if it is a bomb
 	beqz $t3, revealmapnumber
-		sh $s1, ($t6)
+		#sh $s1, ($t6)
+		move $a0, $s2
+		move $a1, $s1
+		li $a2, 'b'
+		li $a3, 0x7
+		li $t8, 0x0
+		push($t8)
+		jal set_cell
+		pop($t8)
 		j finishtile
 	revealmapnumber:		# Else, check how many bombs are nearby
 		blez $t4, revealmapempty	# If > 0, write that number to the cell
-		addi $t4, $t4, '0'
-		push($s3)			# Save $s3
-		or $s3, $s3, $t4
-		sh $s3, ($t6)
-		pop($s3)			# Restore $s3
+		# sh $s3, ($t6)
+		move $a0, $s2
+		move $a1, $s1
+		addi $a2, $t4, '0'
+		li $a3, 0xD
+		li $t8, 0x0
+		push($t8)
+		jal set_cell
+		pop($t8)
 		j finishtile
 	revealmapempty:			# If == 0, it must be an empty cell
-		sh $s6, ($t6)
-	
+		#sh $s6, ($t6)
+		move $a0, $s2
+		move $a1, $s1
+		li $a2, '\0'
+		li $a3, 0xF
+		li $t8, 0x0
+		push($t8)
+		jal set_cell
+		pop($t8)
 	finishtile:
 	inc($t0)
 	blt $t0, 100, revealloop1
@@ -798,7 +832,6 @@ reveallost:
 	li $s3, 0x9F
     sll $s3, $s3, 8
     ori $s3, $s3, 'e'
-	
 	sh $s3, ($s2)
 	
 	j exitrevealmap
@@ -821,11 +854,13 @@ exitrevealmap:
 ##############################
 
 perform_action:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ##########################################
+
+	# s0 = byte array
+    
+	push($s0)
+	move $s0, $a0
+
+
     jr $ra
 
 game_status:
