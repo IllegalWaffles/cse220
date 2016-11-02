@@ -749,30 +749,47 @@ reveallost:
 	andi $t3, $t1, 32		# $t3 contains if it is a bomb
 	srl $t3, $t3, 5			
 	andi $t4, $t1, 0xF 		# $t4 contains the number of surrounding bombs
-						
 							# First check if it is flagged
 	beqz $t2, revealmapbomb
 		and $t5, $t2, $t3	# If its a correct flag
 		beqz $t5, incorrectflag	# Write correct flag
 			sh $s5, ($t6)
-		j finishtile
-	incorrectflag:			# If its an incorrect flag
+			j finishtile
+		incorrectflag:			# If its an incorrect flag
 			sh $s4, ($t6)	# Write incorrect flag
+			j finishtile	
+	revealmapbomb:			# Else, check if it is a bomb
+	beqz $t3, revealmapnumber
+		sh $s1, ($t6)
 		j finishtile
-		
-							# Else, check if it is a bomb
-	revealmapbomb:	
-	
-	
-							# Else, check how many bombs are nearby
-							# If > 0, write that number to the cell
-							# If == 0, it must be an empty cell
+	revealmapnumber:		# Else, check how many bombs are nearby
+		blez $t4, revealmapempty	# If > 0, write that number to the cell
+		addi $t4, $t4, '0'
+		or $s3, $s3, $t4
+		sh $s3, ($t6)
+		j finishtile
+	revealmapempty:			# If == 0, it must be an empty cell
+		sh $s6, ($t6)
 	
 	finishtile:
 	inc($t0)
 	blt $t0, 100, revealloop1
 	
-							# Overwrite cursor to red explodey thing
+	lw $s0, cursor_row				# Overwrite cursor to red explodey thing
+	lw $s1, cursor_col
+	li $s2, 20
+	
+	mult $s0, $s2
+	mflo $s0
+	sll $s1, $s1, 1
+	add $s2, $s1, $s0
+	addiu $s2, $s2, 0xFFFF0000
+	
+	li $s3, 0x9F
+    sll $s3, $s3, 8
+    ori $s3, $s3, 'e'
+	
+	sh $s3, ($s2)
 	
 	j exitrevealmap
 
