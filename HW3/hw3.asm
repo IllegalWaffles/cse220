@@ -123,6 +123,7 @@ smiley1exit:
 open_file:
     #Define your code here
 	# $a0 already contains the address of the string
+	
 	li $a1, 0
 	li $a2, 0
 	
@@ -458,8 +459,11 @@ loop3exit:
 	inc($t0)
 	blt $t0, 10, loopa	# Close outer loop
 
-	sw $0, cursor_row	
-	sw $0, cursor_col
+	li $t0, 4
+	li $t1, 5
+	
+	sw $t0, cursor_row	
+	sw $t1, cursor_col
 
     pop($s5)
 	pop($s4)
@@ -722,9 +726,9 @@ reveallost:
 
 	# Code to test flags
 	
-	bne $s2, 6, skipflag
-	ori $s4, $s4, 0x10
-skipflag:
+	#bne $s2, 6, skipflag
+	#ori $s4, $s4, 0x10
+#skipflag:
 	
 	andi $s5, $s4, 16		# $s5 contains if it is flagged
 	srl $s5, $s5, 4
@@ -829,11 +833,133 @@ exitrevealmap:
 perform_action:
 
 	# s0 = byte array
+    # s1 = char
+    # s2 = cursor row
+    # s3 = cursor column
+    # s4 = MMIO data at the cursor
+    # s5 = 1-byte data at the cursor
     
+    push($ra)
 	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)
+	push($s4)
+	push($s5)
+	
 	move $s0, $a0
+	move $s1, $a1
+	ori $s1, $s1, 0x20		# Set all the chars to lowercase
+	
+	lb $s2, cursor_row
+	lb $s3, cursor_col
+	
+	move $a0, $s2
+	move $a1, $s3
+	jal get1byteOffset
+	addu $s5, $v0, $s0		# $s5 holds the 1-byte address
+	
+	move $a0, $s2
+	move $a1, $s3
+	jal get2byteOffset		
+	addiu $s4, $v0, 0xFFFF0000# $s4 holds the 2-byte address	
+	
+	# Handle key presses:
+	# w,a,s,d
+	# f - flag
+	# r - reveal
+	
+	bne $s1, 'w', actiona
+		blez $s2, action_do_nothing	# Check if this move is possible
+		# We need to change the background of the above cell to yellow, 
+		# and change this cell's background to gray if hidden, or black if revealed
+		addi $s2, $s2, -1
+		sb $s2, cursor_row
+		
+		lh $t2, ($s4)		# Load the data we need
+		
+		move $a0, $s3
+		move $a1, $s2
+		andi $a2, $t0, 0xFF	# Get the char
+		
+		srl $a3, $s4, 8
+		andi $a3, $a3, 0xF	# Get foreground color
+		
+		andi $t1, $s5, 64
+		beqz $t1, actionw_notrevealed	# branch if it is NOT revealed
+			
+			li $t0, 0x0
+			push($t0)
+			jal set_cell
+			pop($t0)
+			
+	j action_return
+		actionw_notrevealed:
+			
+			li $t0, 0x7
+			push($t0)
+			jal set_cell
+			pop($t0)
 
+	j action_return
+actiona:
+	bne $s1, 'a', actions
+		blez $s3, action_do_nothing # Check if this move is possible
+		
+		
+	j action_return
+actions:
+	bne $s1, 's', actiond
+		bge $s2, 9, action_do_nothing # Check if this move is possible
+		
+	
+	j action_return
+actiond:
+	bne $s1, 'd', actionf
+		bge $s3, 9, action_do_nothing # Check if this move is possible
+		
+	
+	j action_return
 
+actionf:
+	bne $s1, 'f', actionr
+	
+	
+	
+	
+	j action_return
+	
+actionr:
+	bne $s1, 'r', action_do_nothing
+	
+	jal search_cells
+	
+	lb $t0, ($s5)
+	andi $t0, $t0, 128
+	bnez $t0, action_do_nothing	# Branch if it is already revealed
+	
+action_return:
+
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+	li $v0, 0
+	jr $ra
+
+action_do_nothing:
+	
+	pop($s5)
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
+	li $v0, -1
     jr $ra
 
 game_status:
@@ -843,7 +969,30 @@ game_status:
     li $v0, -200
     ##########################################
     jr $ra
-
+##############################
+get2byteOffset:
+	# $a0 has the row
+	# $a1 has the col
+	li $t0, 20		
+	mult $t0, $a0		# Row * 20
+	mflo $t0		
+	
+	sll $a1, $a1, 1		# Col * 2
+	add $v0, $t0, $a1	# (Row * 20) + (col * 2)
+	
+	jr $ra
+##############################
+get1byteOffset:
+	# $a0 has the row
+	# $a1 has the col
+	li $t0, 10
+	mult $t0, $a0
+	mflo $t0
+	
+	add $v0, $t0, $a1	
+	
+	jr $ra
+	
 ##############################
 # PART 5 FUNCTIONS
 ##############################
