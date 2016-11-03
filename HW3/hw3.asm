@@ -459,8 +459,8 @@ loop3exit:
 	inc($t0)
 	blt $t0, 10, loopa	# Close outer loop
 
-	li $t0, 4
-	li $t1, 5
+	li $t0, 0
+	li $t1, 0
 	
 	sw $t0, cursor_row	
 	sw $t1, cursor_col
@@ -627,8 +627,8 @@ set_cell:
     # $t0 - row
     # $t1 - col
     # $t2 - ch (char)
-    # $t3 - foreground byte
-    # $t4 - background byte
+    # $t3 - foreground half-byte
+    # $t4 - background half-byte
     
     move $t1, $a0
     move $t0, $a1
@@ -836,8 +836,8 @@ perform_action:
     # s1 = char
     # s2 = cursor row
     # s3 = cursor column
-    # s4 = MMIO data at the cursor
-    # s5 = 1-byte data at the cursor
+    # s4 = MMIO address at the cursor
+    # s5 = 1-byte address at the cursor
     
     push($ra)
 	push($s0)
@@ -873,53 +873,100 @@ perform_action:
 		blez $s2, action_do_nothing	# Check if this move is possible
 		# We need to change the background of the above cell to yellow, 
 		# and change this cell's background to gray if hidden, or black if revealed
-		addi $s2, $s2, -1
-		sb $s2, cursor_row
+		# addi $s2, $s2, -1
+		# sb $s2, cursor_row
 		
-		lh $t2, ($s4)		# Load the data we need
-		
-		move $a0, $s3
-		move $a1, $s2
-		andi $a2, $t0, 0xFF	# Get the char
-		
-		srl $a3, $s4, 8
-		andi $a3, $a3, 0xF	# Get foreground color
-		
-		andi $t1, $s5, 64
-		beqz $t1, actionw_notrevealed	# branch if it is NOT revealed
-			
-			li $t0, 0x0
-			push($t0)
-			jal set_cell
-			pop($t0)
-			
-	j action_return
-		actionw_notrevealed:
-			
-			li $t0, 0x7
-			push($t0)
-			jal set_cell
-			pop($t0)
+		addi $t9, $s4, -20
+		lh $t0, ($t9)
+		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
+		li $t1, 0xB				# Load yellow
+		sll $t1, $t1, 12		# Shift it over to its proper position
+		or $t0, $t0, $t1		# Add the two values
+		sh $t0, ($t9)			# Set the new cursor's background
+
+		lb $t0, cursor_row
+		addi $t0, $t0, -1
+		sb $t0, cursor_row		# Dec the cursor row stored in mem
 
 	j action_return
 actiona:
 	bne $s1, 'a', actions
 		blez $s3, action_do_nothing # Check if this move is possible
 		
+		addi $t9, $s4, -2
+		lh $t0, ($t9)
+		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
+		li $t1, 0xB				# Load yellow
+		sll $t1, $t1, 12		# Shift it over to its proper position
+		or $t0, $t0, $t1		# Add the two values
+		sh $t0, ($t9)			# Set the new cursor's background
+
+		lb $t0, cursor_col
+		addi $t0, $t0, -1
+		sb $t0, cursor_col		# Dec the cursor row stored in mem
+
 		
 	j action_return
 actions:
 	bne $s1, 's', actiond
 		bge $s2, 9, action_do_nothing # Check if this move is possible
 		
-	
+		# s0 = byte array
+    	# s1 = char
+    	# s2 = cursor row
+    	# s3 = cursor column
+    	# s4 = MMIO address at the cursor
+    	# s5 = 1-byte address at the cursor
+		
+		addi $t9, $s4, 20
+		lh $t0, ($t9)
+		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
+		li $t1, 0xB				# Load yellow
+		sll $t1, $t1, 12		# Shift it over to its proper position
+		or $t0, $t0, $t1		# Add the two values
+		sh $t0, ($t9)			# Set the new cursor's background
+
+		lb $t0, cursor_row
+		addi $t0, $t0, 1
+		sb $t0, cursor_row		# Inc the cursor row stored in mem
+
+		
 	j action_return
 actiond:
 	bne $s1, 'd', actionf
 		bge $s3, 9, action_do_nothing # Check if this move is possible
 		
-	
-	j action_return
+		addi $t9, $s4, 2
+		lh $t0, ($t9)
+		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
+		li $t1, 0xB				# Load yellow
+		sll $t1, $t1, 12		# Shift it over to its proper position
+		or $t0, $t0, $t1		# Add the two values
+		sh $t0, ($t9)			# Set the new cursor's background
+
+		# Update coordinates
+		lb $t0, cursor_col
+		addi $t0, $t0, 1
+		sb $t0, cursor_col		# Inc the cursor row stored in mem	
+
+		# Now replace the old cursor spot
+		lh $t0, ($s4)
+		andi $t1, $t0, 6		# $t1 has if it is revealed
+		beqz $t1, actiond_notrevealed
+
+		andi $t0, $t0, 0xFFF
+		
+		
+		
+		j action_return
+		actiond_notrevealed:
+
+			
+		
+		
+
+		
+		j action_return
 
 actionf:
 	bne $s1, 'f', actionr
