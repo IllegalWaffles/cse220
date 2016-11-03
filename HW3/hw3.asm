@@ -864,6 +864,10 @@ perform_action:
 	jal get2byteOffset		
 	addiu $s4, $v0, 0xFFFF0000# $s4 holds the 2-byte address	
 	
+	lb $t0, ($s5)
+	pbin($t0)
+	newline()
+	
 	# Handle key presses:
 	# w,a,s,d
 	# f - flag
@@ -888,7 +892,12 @@ perform_action:
 		addi $t0, $t0, -1
 		sb $t0, cursor_row		# Dec the cursor row stored in mem
 
-	j action_return
+		# Now replace the old cursor spot
+		lb $t0, ($s5)
+		andi $t1, $t0, 64		# $t1 has if it is revealed
+		beqz $t1, action_notrevealed
+		j action_revealed
+		
 actiona:
 	bne $s1, 'a', actions
 		blez $s3, action_do_nothing # Check if this move is possible
@@ -904,9 +913,13 @@ actiona:
 		lb $t0, cursor_col
 		addi $t0, $t0, -1
 		sb $t0, cursor_col		# Dec the cursor row stored in mem
-
+	
+		# Now replace the old cursor spot
+		lb $t0, ($s5)
+		andi $t1, $t0, 64		# $t1 has if it is revealed
+		beqz $t1, action_notrevealed
+		j action_revealed
 		
-	j action_return
 actions:
 	bne $s1, 's', actiond
 		bge $s2, 9, action_do_nothing # Check if this move is possible
@@ -930,8 +943,12 @@ actions:
 		addi $t0, $t0, 1
 		sb $t0, cursor_row		# Inc the cursor row stored in mem
 
+		# Now replace the old cursor spot
+		lb $t0, ($s5)
+		andi $t1, $t0, 64	# $t1 has if it is revealed
+		beqz $t1, action_notrevealed
+		j action_revealed
 		
-	j action_return
 actiond:
 	bne $s1, 'd', actionf
 		bge $s3, 9, action_do_nothing # Check if this move is possible
@@ -950,24 +967,34 @@ actiond:
 		sb $t0, cursor_col		# Inc the cursor row stored in mem	
 
 		# Now replace the old cursor spot
+		lb $t0, ($s5)
+		andi $t1, $t0, 64		# $t1 has if it is revealed
+		beqz $t1, action_notrevealed
+		j action_revealed
+
+action_revealed:
+	
 		lh $t0, ($s4)
-		andi $t1, $t0, 6		# $t1 has if it is revealed
-		beqz $t1, actiond_notrevealed
-
-		andi $t0, $t0, 0xFFF
+		andi $t0, $t0, 0xFFF	# Mask for the first 12 bits
+		li $t1, 0x0
+		sll $t1, $t1, 12
+		or $t0, $t0, $t1
+		sh $t0, ($s4)
+	
+	j action_return
+	
+action_notrevealed:	# If it is not revealed:
+	
+		lh $t0, ($s4)
+		andi $t0, $t0, 0xFFF	# Mask for the first 12 bits
+		li $t1, 0x7
+		sll $t1, $t1, 12
+		or $t0, $t0, $t1
+		sh $t0, ($s4)
 		
-		
-		
-		j action_return
-		actiond_notrevealed:
-
-			
-		
-		
-
-		
-		j action_return
-
+	j action_return
+	
+	
 actionf:
 	bne $s1, 'f', actionr
 	
@@ -984,6 +1011,8 @@ actionr:
 	lb $t0, ($s5)
 	andi $t0, $t0, 128
 	bnez $t0, action_do_nothing	# Branch if it is already revealed
+
+j action_return
 	
 action_return:
 
