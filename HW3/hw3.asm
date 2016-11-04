@@ -864,9 +864,9 @@ perform_action:
 	jal get2byteOffset		
 	addiu $s4, $v0, 0xFFFF0000# $s4 holds the 2-byte address	
 	
-	lb $t0, ($s5)
-	pbin($t0)
-	newline()
+	#lb $t0, ($s5)
+	#pbin($t0)
+	#newline()
 	
 	# Handle key presses:
 	# w,a,s,d
@@ -875,16 +875,11 @@ perform_action:
 	
 	bne $s1, 'w', actiona
 		blez $s2, action_do_nothing	# Check if this move is possible
-		# We need to change the background of the above cell to yellow, 
-		# and change this cell's background to gray if hidden, or black if revealed
-		# addi $s2, $s2, -1
-		# sb $s2, cursor_row
 		
 		addi $t9, $s4, -20
 		lh $t0, ($t9)
 		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
-		li $t1, 0xB				# Load yellow
-		sll $t1, $t1, 12		# Shift it over to its proper position
+		li $t1, 0xB000				# Load yellow
 		or $t0, $t0, $t1		# Add the two values
 		sh $t0, ($t9)			# Set the new cursor's background
 
@@ -905,8 +900,7 @@ actiona:
 		addi $t9, $s4, -2
 		lh $t0, ($t9)
 		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
-		li $t1, 0xB				# Load yellow
-		sll $t1, $t1, 12		# Shift it over to its proper position
+		li $t1, 0xB000				# Load yellow
 		or $t0, $t0, $t1		# Add the two values
 		sh $t0, ($t9)			# Set the new cursor's background
 
@@ -934,8 +928,7 @@ actions:
 		addi $t9, $s4, 20
 		lh $t0, ($t9)
 		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
-		li $t1, 0xB				# Load yellow
-		sll $t1, $t1, 12		# Shift it over to its proper position
+		li $t1, 0xB000				# Load yellow
 		or $t0, $t0, $t1		# Add the two values
 		sh $t0, ($t9)			# Set the new cursor's background
 
@@ -956,8 +949,7 @@ actiond:
 		addi $t9, $s4, 2
 		lh $t0, ($t9)
 		andi $t0, $t0, 0xFFF	# Mask for only the char and the fg color
-		li $t1, 0xB				# Load yellow
-		sll $t1, $t1, 12		# Shift it over to its proper position
+		li $t1, 0xB000				# Load yellow
 		or $t0, $t0, $t1		# Add the two values
 		sh $t0, ($t9)			# Set the new cursor's background
 
@@ -976,9 +968,6 @@ action_revealed:
 	
 		lh $t0, ($s4)
 		andi $t0, $t0, 0xFFF	# Mask for the first 12 bits
-		li $t1, 0x0
-		sll $t1, $t1, 12
-		or $t0, $t0, $t1
 		sh $t0, ($s4)
 	
 	j action_return
@@ -987,8 +976,7 @@ action_notrevealed:	# If it is not revealed:
 	
 		lh $t0, ($s4)
 		andi $t0, $t0, 0xFFF	# Mask for the first 12 bits
-		li $t1, 0x7
-		sll $t1, $t1, 12
+		li $t1, 0x7000
 		or $t0, $t0, $t1
 		sh $t0, ($s4)
 		
@@ -998,9 +986,31 @@ action_notrevealed:	# If it is not revealed:
 actionf:
 	bne $s1, 'f', actionr
 	
+	lb $t0, ($s5)
+
+	andi $t1, $t0, 64				# do nothing if it is already revealed
+	bnez $t1, action_do_nothing
+
+	# Flip the bit we must flip
+	xori $t0, $t0, 16	# Flip this bit
+	sb $t0, ($s5)		# Save the new value
 	
-	
-	
+	lh $t3, ($s4)
+	andi $t3, $t3, 0xF000
+
+	andi $t2, $t0, 16	# Save the new flag value
+	beqz $t2, actionf_writenull # If it is zero, write a null as the character
+
+actionf_writeflag:				# Otherwise, put a flag there
+	ori $t3, $t3, 'f'
+	ori $t3, $t3, 0x400
+	sh $t3, ($s4)
+	j action_return
+
+actionf_writenull:
+	ori $t3, $t3, '\0'
+	ori $t3, $t3, 0x700
+	sh $t3, ($s4)
 	j action_return
 	
 actionr:
@@ -1009,10 +1019,39 @@ actionr:
 	jal search_cells
 	
 	lb $t0, ($s5)
-	andi $t0, $t0, 128
-	bnez $t0, action_do_nothing	# Branch if it is already revealed
+	andi $t1, $t0, 64
+	bnez $t1, action_do_nothing	# Branch if it is already revealed
 
-j action_return
+	ori $t0, $t0, 64 	# Its not revealed. Set it to revealed
+	andi $t0, $t0, 0x6f	# Remove the flag, if any
+	sb $t0, ($s5)		# Save it into memory
+
+	andi $t1, $t0, 32
+	beqz $t1, actionr_notbomb
+	# Its a bomb! Fuck!
+	li $t1, 'b'
+	ori $t1, $t1, 0xb500
+	sh $t1, ($s4)
+	j action_return
+actionr_notbomb: # Its not a bomb
+
+	# Check number of adjacent bombs
+	andi $t1, $t0, 0xF
+	bnez $t1, actionr_numtile
+actionr_emptytile:
+
+	li $t2, 0xb000
+	ori $t2, $t2, '\0'
+	sh $t2, ($s4)
+
+	j action_return
+actionr_numtile:
+	li $t2, 0xb500
+	addi $t1, $t1, '0'
+	or $t2, $t2, $t1
+	sh $t2, ($s4)
+
+	j action_return
 	
 action_return:
 
@@ -1037,14 +1076,58 @@ action_do_nothing:
 	pop($ra)
 	li $v0, -1
     jr $ra
-
+#############################3
 game_status:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -200
-    ##########################################
+
+	move $t0, $a0	# $t0 stores the base address
+	li $t1, 0		# $t1 is our counter
+	li $t6, 0		# $t6 is our incorrect bonb counter
+
+	statusloop:
+
+	add $t2, $t0, $t1
+	inc($t1)
+	lb $t2, ($t2)	# $t2 contains the data for the current tile
+	# $t3 contains if it is a bomb
+	andi $t3, $t2, 32
+	srl $t3, $t3, 5
+	# $t4 contains if it is revealed
+	andi $t4, $t2, 64
+	srl $t4, $t4, 6
+	# $t5 contains if it is flagged
+	andi $t5, $t2, 16
+	srl $t5, $t5, 4
+	# if there is a revealed bomb, branch immediately to fail.
+	# xor the bomb and flag bits, add to a counter
+	# if the counter ends up being zero, each bomb was correctly flagged
+	
+	and $t7, $t3, $t4
+	bnez $t7, game_status_lose
+
+	xor $t7, $t5, $t3	# iff one value is true
+	add $t6, $t6, $t7
+
+	blt $t1, 100, statusloop
+	
+	bnez $t6, game_status_ongoing
+	
+game_status_win:
+
+	li $v0, 1
     jr $ra
+
+game_status_ongoing:
+
+	li $v0, 0
+	jr $ra
+
+game_status_lose:
+	
+	li $v0, -1
+	jr $ra
+
+
+
 ##############################
 get2byteOffset:
 	# $a0 has the row
