@@ -76,8 +76,6 @@ main:
 		la	$a0,	cells_array
 		jal	game_status
 		
-		j while_game
-		
 		# the game is ongoing, jump back to prompt for next action
 		beqz	$v0,	while_game
 
