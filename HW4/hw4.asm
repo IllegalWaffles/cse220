@@ -73,11 +73,9 @@ preorder:
     push($a1)
     push($a2)
     # Code to write it to file here
-    # Write a newline here
     move $a0, $s2
     move $a1, $a2
     jal itof
-    
     
     pop($a2)
     pop($a1)
@@ -172,11 +170,36 @@ itof1:
 ##############################
 
 linear_search:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -10
-    ###########################################
+
+	# Create static masking byte:0x80 ($t0) doesn't change
+
+	# Decrement byte array pointer
+	# label1
+	# Increment byte array pointer
+	# Load that byte
+	# reset masking byte
+	# label2
+	# mask loaded byte with masking byte
+	# if its nonzero, return count
+	# increment count
+	# if count > maxsize, return negative
+	# shift mask to the right by 1
+	# if masking byte is zero, j label1
+	# j label2
+	
+	# $t0 - static masking byte
+	# $t1 - masking byte
+	# $t2 - byte array pointer
+	# $t3 - current (loaded) byte
+	# $t4 - mask result
+	# $t5 - count
+
+	li $t0, 0x80
+	
+LS1:
+	
+
+    li $v0, -1
     jr $ra
 
 set_flag:
