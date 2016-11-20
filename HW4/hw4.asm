@@ -193,15 +193,36 @@ linear_search:
 	# $t3 - current (loaded) byte
 	# $t4 - mask result
 	# $t5 - count
+	# $t6 - maxsize
 
 	li $t0, 0x80
+	addi $t2, $a0, -1
+	move $t6, $a1
+	li $t5, 0
 	
 LS1:
+	inc($t2)		# Increment byte array pointer
+	lb $t3, ($t2)	# Load the newest byte
+	move $t1, $t0	# Reset the mask
 	
+LS2:
+	and $t4, $t1, $t3		# Mask the byte
+	beqz $t4, LSreturn		# If its zero, return with the current index
+	inc($t5)				# Otherwise increment the index
+	bgt $t5, $t6, LSfail	# If the index is > maxsize, return failure
+	srl $t1, $t1, 1			# Shift the mask over one
+	beqz $t1, LS1			# if the mask is zero, load the next byte and reset the max
+	j LS2					# otherwise read the next bit
 
+LSreturn:
+	move $v0, $t5
+	jr $ra
+
+LSfail:
     li $v0, -1
     jr $ra
-
+    
+###################################################
 set_flag:
     #Define your code here
     ############################################

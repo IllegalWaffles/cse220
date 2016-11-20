@@ -27,6 +27,19 @@ main:
 	move $a0, $v0
 	li $v0, 1
 	syscall
+	# print newline
+	li $v0, 4
+	la $a0, endl
+	syscall
+	la $a0, flag_array_0
+	li $a1, 10 # only the first 10 bits of the flag array are valid
+	jal linear_search
+	# print return value
+	move $a0, $v0
+	li $v0, 1
+	syscall
+	# print newline
+	
 	# print 2 newlines
 	li $v0, 4
 	la $a0, endl
