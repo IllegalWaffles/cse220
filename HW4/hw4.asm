@@ -52,14 +52,15 @@ preorder:
     # $a1 - base address of the array of nodes
     # $a2 - file descriptor
     # do not change base array or FD
+   	
+    push($ra)	
+    push($s0)	# $s0 - left index
+    push($s1)	# Ss1 - right index
+    push($s2)	# $s2 - node value
     
-    # $s0 - left index
-    # Ss1 - right index
-    # $s2 - node value
-    push($ra)
-    push($s0)
-    push($s1)
-    push($s2)
+    move $s3, $a0
+    move $s4, $a1
+    move $s5, $a2
     
     lw $t0, ($a0)
     andi $s2, $t0, 0xFFFF 	# Get the node value
@@ -68,11 +69,19 @@ preorder:
     andi $s1, $t0, 0xFF0000
     srl $s1, $s1, 16		# Get right index
     
+    push($a0)
+    push($a1)
+    push($a2)
     # Code to write it to file here
     # Write a newline here
+    move $a0, $s2
+    move $a1, $a2
+    jal itof
     
-    print_int($s2)
-    newline()
+    
+    pop($a2)
+    pop($a1)
+    pop($a0)
     
 leftpreorder:
     beq $s0, 255, rightpreorder
@@ -120,6 +129,8 @@ itof:
 	li $t0, 0
 	li $a2, 1
 	
+	move $t9, $a1 # Save file descriptor
+	
 itof0:
 	
 	div $a0, $t3	# Divide by 10
@@ -137,7 +148,7 @@ itof1:
 	pop($t1)			# Pop a digit off the stack
 	sb $t1, buffer		# Write it to the output buffer
 	
-	move $a0, $a1		# Write the digit to the file
+	move $a0, $t9		# Write the digit to the file
 	la $a1, buffer
 	li $v0, 15
 	syscall
@@ -146,9 +157,9 @@ itof1:
 	bnez $t0, itof1		# Loop
 	
 	li $t0, '\n'
-	sw $t0, buffer
+	sb $t0, buffer
 	
-	move $a0, $a1
+	move $a0, $t9
 	la $a1, buffer
 	li $a2, 1
 	li $v0, 15
