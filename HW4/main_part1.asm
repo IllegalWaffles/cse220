@@ -14,7 +14,7 @@ main:
 	move $s0, $v0    # save the file descriptor
 
 	# Call preorder traversal of the tree starting at nodes2
-	la $a0, nodes2
+	la $a0, nodes7
 	move $a1, $a0
 	move $a2, $s0
 	jal preorder

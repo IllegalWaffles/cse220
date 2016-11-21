@@ -129,6 +129,40 @@ itof:
 	
 	move $t9, $a1 # Save file descriptor
 	
+	andi $t8, $a0, 0x8000
+	
+	beqz $t8, itof0		# If its positive, skip all this
+	
+	push($t0)
+	push($t9)
+	push($v0)
+	push($a0)
+	push($a1)
+	push($a2)
+	
+	li $t0, '-'
+	sb $t0, buffer
+	
+	move $a0, $t9
+	la $a1, buffer
+	li $a2, 1
+	li $v0, 15
+	syscall
+
+	li $t0, 0
+	sb $t0, buffer
+
+	pop($a2)
+	pop($a1)
+	pop($a0)
+	pop($v0)
+	pop($t9)
+	pop($t0)
+	
+	xori $a0, $a0, 0xFFFF
+	addi $a0, $a0, 1	# Convert to positive
+	
+	
 itof0:
 	
 	div $a0, $t3	# Divide by 10
