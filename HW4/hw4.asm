@@ -224,13 +224,41 @@ LSfail:
     
 ###################################################
 set_flag:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -20
-    ###########################################
-    jr $ra
+	addi $t0, $a3, -1
+	bgt $a1, $t0, SFfail
+	
+	# $a0 array pointer
+	# $a1 index to write [0 -> (maxsize-1)]
+	# $a2 setValue
+	# $a3 maxsize
+	
+	andi $t0, $a1, 7	# Remainder div/8
+	srl $t1, $a1, 3		# Quotient div/8
+	
+	add $t2, $a0, $t1	# Offset it by the number of bytes
+	lbu $t3, ($t2)		# Load the byte at this location
+	# Don't change $t2 from here out
+	
+	li $t4, 0x80		# Set it to the leftmost bit
+	srlv $t4, $t4, $t0	# Shift it over how ever many times needed
+	not $t4, $t4		# Flip it, since we want all the bits except this one
+	
+	and $t5, $t3, $t4	# Mask for all the bits except the one we want
+	
+	sll $t6, $a2, 7		# Move the set bit to the left end
+	srlv $t6, $t6, $t0	# Offset it to match the thing
+	
+	or $t5, $t6, $t5
+	sb $t5, ($t2)
+	
+SFreturn:
+	li $v0, 1
+	jr $ra
 
+SFfail:
+    li $v0, 0
+    jr $ra
+###################################################
 find_position:
     #Define your code here
     ############################################
