@@ -9,7 +9,7 @@ main:
 	# linear_search
 	#################################################################
 
-	la $a0, flag_array_0
+	la $a0, flag_array_1
 	li $a1, 32 # the entire 32 bits of the flag array are valid
 	jal linear_search
 	# print return value
@@ -20,7 +20,7 @@ main:
 	li $v0, 4
 	la $a0, endl
 	syscall
-	la $a0, flag_array_0
+	la $a0, flag_array_1
 	li $a1, 27 # only the first 27 bits of the flag array are valid
 	jal linear_search
 	# print return value
@@ -31,7 +31,7 @@ main:
 	li $v0, 4
 	la $a0, endl
 	syscall
-	la $a0, flag_array_0
+	la $a0, flag_array_1
 	li $a1, 10 # only the first 10 bits of the flag array are valid
 	jal linear_search
 	# print return value
@@ -171,6 +171,7 @@ alloc_mem_flag_array: .byte 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		    	    0, 0	# 8 words = 32 bytes = 256 bits (1 bit not needed at end)
 
 flag_array_0: .byte 0xFF, 0xFF, 0xFF, 0x3F
+flag_array_1: .byte 0xFF, 0x0F, 0xFF, 0xFF
 flag_array_size16: .byte 0x82, 0x44
 
 #################################################################

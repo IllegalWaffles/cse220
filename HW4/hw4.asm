@@ -217,11 +217,10 @@ linear_search:
 	# if its nonzero, return count
 	# increment count
 	# if count > maxsize, return negative
-	# shift mask to the right by 1
-	# if masking byte is zero, j label1
+	# shift mask to the left by 1
+	# if masking byte is 256, j label1
 	# j label2
 	
-	# $t0 - static masking byte
 	# $t1 - masking byte
 	# $t2 - byte array pointer
 	# $t3 - current (loaded) byte
@@ -229,7 +228,6 @@ linear_search:
 	# $t5 - count
 	# $t6 - maxsize
 
-	li $t0, 0x80
 	addi $t2, $a0, -1
 	move $t6, $a1
 	li $t5, 0
@@ -237,15 +235,15 @@ linear_search:
 LS1:
 	inc($t2)		# Increment byte array pointer
 	lb $t3, ($t2)	# Load the newest byte
-	move $t1, $t0	# Reset the mask
-	
+	li $t1, 1		# Reset the mask
+
 LS2:
 	and $t4, $t1, $t3		# Mask the byte
 	beqz $t4, LSreturn		# If its zero, return with the current index
 	inc($t5)				# Otherwise increment the index
-	bgt $t5, $t6, LSfail	# If the index is > maxsize, return failure
-	srl $t1, $t1, 1			# Shift the mask over one
-	beqz $t1, LS1			# if the mask is zero, load the next byte and reset the max
+	bgt $t5, $t6, LSfail		# If the index is > maxsize, return failure
+	sll $t1, $t1, 1			# Shift the mask over one
+	beq $t1, 256, LS1		# if the mask is zero, load the next byte and reset the max
 	j LS2					# otherwise read the next bit
 
 LSreturn:
@@ -253,8 +251,8 @@ LSreturn:
 	jr $ra
 
 LSfail:
-    li $v0, -1
-    jr $ra
+	li $v0, -1
+	jr $ra
     
 ###################################################
 set_flag:
@@ -273,14 +271,14 @@ set_flag:
 	lbu $t3, ($t2)		# Load the byte at this location
 	# Don't change $t2 from here out
 	
-	li $t4, 0x80		# Set it to the leftmost bit
-	srlv $t4, $t4, $t0	# Shift it over how ever many times needed
+	li $t4, 1			# Set it to the rightmost bit
+	sllv $t4, $t4, $t0	# Shift it over how ever many times needed
 	not $t4, $t4		# Flip it, since we want all the bits except this one
 	
 	and $t5, $t3, $t4	# Mask for all the bits except the one we want
-	
-	sll $t6, $a2, 7		# Move the set bit to the left end
-	srlv $t6, $t6, $t0	# Offset it to match the thing
+
+	andi $t6, $a2, 1	# Mask for only the first bit
+	sllv $t6, $t6, $t0	# Offset it to match the thing
 	
 	or $t5, $t6, $t5
 	sb $t5, ($t2)
@@ -294,14 +292,11 @@ SFfail:
     jr $ra
 ###################################################
 find_position:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -30
-    li $v1, -40
-    ###########################################
-    jr $ra
 
+	
+
+	jr $ra
+###################################################
 add_node:
     #Define your code here
     ############################################
