@@ -293,16 +293,179 @@ SFfail:
 ###################################################
 find_position:
 
+	# $a0 - nodes array
+	# $a1 - index
+	# $a2 - newvalue
 	
+	push($ra)
+	push($s0)
+	push($s1)
+	push($s2)
+	push($s3)
+	push($s4)
+	
+	move $s4, $a1
+	sll $s0, $a2, 16	# Erase upper 16 bits
+	sra $s0, $s0, 16	# Sign extend lower 16 bits
 
+						# $s0 has newvalue
+						# $s1 has node value
+						# $s2 has left index
+						# $s3 has right index
+						# $s4 has the current index
+	
+	sll $t0, $a1, 2
+	add $t1, $a0, $t0	# Calculate correct address
+	
+	lw $t0, ($t1)
+    andi $s1, $t0, 0xFFFF 	# Get the node value
+    andi $s2, $t0, 0xFF000000
+    srl $s2, $s2, 24		# Get left index
+    andi $s3, $t0, 0xFF0000
+    srl $s3, $s3, 16		# Get right index
+
+FPleftindex:
+	
+	bge $s0, $s1, FPrightindex	# if(newvalue < nodes[currIndex].value)
+	bne $s2, 255, FPleftelse	# if(leftindex == 255)
+	
+	move $v0, $a1				# 
+	li $v1, 0					# return currIndex, 0
+	
+	j FPreturn
+FPleftelse:
+	
+	move $a1, $s2				# Set the argument to left node		
+	
+	jal find_position			
+	j FPreturn					# Return find_position
+	
+FPrightindex:
+	
+	bne $s3, 255, FPrightelse	# if(rightIndex == 255)
+	
+	move $v0, $a1
+	li $v1, 1
+	
+	j FPreturn					# Return currIndex, 1
+FPrightelse:
+
+	move $a1, $s3				# Set the argument to right node
+
+	jal find_position			
+	j FPreturn					# Return find_position
+
+FPreturn:
+	# pop everything before returning
+	pop($s4)
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+	pop($ra)
 	jr $ra
 ###################################################
 add_node:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -50
-    ###########################################
+    
+    lw $t0, 0($sp)
+    lw $t1, 4($sp)
+    
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    push($s4)
+    push($s5)
+    
+    # $a0 - nodes array - $s0
+    # $a1 - rootIndex - $s1
+    # $a2 - newValue - $s2
+    # $a3 - newIndex - $s3
+    # top stack - maxsize - $s4
+    # next on stack - flags array - $s5
+    move $s0, $a0
+    move $s1, $a1
+    move $s2, $a2
+    move $s3, $a3
+    move $s4, $t0
+    move $s5, $t1
+    
+    andi $s1, $s1, 0xFF
+    andi $s3, $s3, 0xFF
+    
+    bge $s1, $s4, ANreturn0
+    bge $s3, $s4, ANreturn0
+    
+    sll $s2, $s2, 16
+    sra $s2, $s2, 16
+    
+    # boolean validRoot = nodeExists(rootIndex);
+    
+    move $a0, $s5
+    move $a1, $s1
+	jal linear_search
+	
+	beqz $v0, rootNotExists
+	
+	move $a0, $s0
+	move $a1, $s1
+	move $a2, $s2
+	jal find_position
+	
+	# $v0 parent index
+	# $v1 left or right, 1 = right 0 = left
+	
+	sll $t1, $v0, 2
+	addu $t0, $s0, $t1
+	lw $t2, ($t0)
+	
+	beq $v1, 1, ANifright
+		
+		andi $t2, $t2, 0xFFFFFF	# Set the left or something
+		sll $t3, $s3, 24
+		or $t2, $t2, $t3
+		sw $t2, ($t0)
+	
+	j ANexitIF
+ANifright:
+	
+		andi $t2, $t2, 0xFF00FFFF	# Set the right or something
+		sll $t3, $s3, 16
+		or $t2, $t2, $t3
+		sw $t2, ($t0)
+	
+	j ANexitIF
+rootNotExists:
+
+	move $s3, $s1	# There's no node, so set it or something
+
+ANexitIF:
+
+	# Executed regardless of which statements in the if is executed
+	sll $t1, $s3, 2
+	addu $t0, $s0, $t1
+	li $t2, 0xFFFF0000
+	or $t2, $t2, $s2
+	
+	move $a0, $s5
+	move $a1, $s3
+	li $a2, 1
+	move $a3, $s4
+	
+	jal set_flag
+	j ANreturn
+	
+ANreturn0:
+	li $v0, 0
+ANreturn:
+    pop($s5)
+    pop($s4)
+    pop($s3)
+    pop($s2)
+    pop($s1)
+    pop($s0)
+    pop($ra)
 	jr $ra
 
 ##############################
