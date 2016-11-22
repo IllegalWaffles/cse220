@@ -482,14 +482,37 @@ get_parent:
     jr $ra
 
 find_min:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -80
-    li $v1, -90
-    ###########################################
-    jr $ra
+	push($ra)
+	
+	sll $t0, $a1, 2				# Multiply offset by 4
+	addu $t0, $t0, $a0			# Add the offset to base address
+	lw $t0, ($t0)				# Load the byte
+	move $t2, $t0				# Save loaded byte for now
+	andi $t0, $t0, 0xFF000000	# Mask for the left index
+	srl $t0, $t0, 24				# Shift it over
 
+	bne $t0, 0xFF, FMrecursive	# If there is a node there, do a recursive call
+							# Otherwise this is the furthest left node
+		move $v0, $a1			# Return current index
+
+		andi $t0, $t2, 0xFF0000	# Mask for right index
+		srl $t0, $t0, 16			# Shift it over
+
+		bne $t0, 0xFF, FM1		# Branch if it is not a leaf
+		li $v1, 1				# Otherwise it's a leaf
+		j FM2
+FM1:		li $v1, 0				# It's not a leaf
+FM2:
+							# Return
+		pop($ra)
+		jr $ra
+	
+FMrecursive:
+		move $a1, $t0			# Load the left index as an arg
+		jal find_min			# Recursive call
+		pop($ra)				# Return from recursive call
+		jr $ra				
+#############################################
 delete_node:
     #Define your code here
     ############################################

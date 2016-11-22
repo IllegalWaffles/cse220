@@ -44,7 +44,7 @@ main:
 	# find_min
 	#################################################################
 
-	la $a0, nodes2
+	la $a0, nodes4
 	li $a1, 0
 	jal find_min # should return 2, 1
 
