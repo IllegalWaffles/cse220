@@ -43,6 +43,14 @@
 	pop($v0)
 .end_macro
 
+.macro get_node(%base_addr, %arr_indx)
+	push($t0)
+	sll $t0, %arr_indx, 2
+	addu $t0, $t0, %base_addr
+	lw $v0, ($t0)
+	pop($t0)
+.end_macro
+
 ##############################
 # PART 1 FUNCTIONS
 ##############################
@@ -404,7 +412,7 @@ add_node:
     
     move $a0, $s5
     move $a1, $s1
-	jal linear_search
+	jal nodeExists # FIX ME
 	
 	beqz $v0, rootNotExists
 	
@@ -448,6 +456,8 @@ ANexitIF:
 	li $t2, 0xFFFF0000
 	or $t2, $t2, $s2
 	
+	sw $t2, ($t0)
+	
 	move $a0, $s5
 	move $a1, $s3
 	li $a2, 1
@@ -471,16 +481,79 @@ ANreturn:
 ##############################
 # PART 3 FUNCTIONS
 ##############################
-
 get_parent:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -60
-    li $v1, -70
-    ###########################################
+    
+    push($ra)
+    
+    # $a0 - base address of nodes array
+    # $a1 - current index
+    # $a2 - child value
+    # $a3 - child index
+    
+    # $v0 - 0 if left of parent, 1 if right, x if parent was not found
+    
+    andi $a3, $a3, 0xFF	# To unsigned byte
+    sll $a2, $a2, 16
+    sra $a2, $a2, 16	# To signed halfword
+    
+    get_node($a0, $a1)
+    move $t0, $v0
+    andi $t1, $t0, 0xFFFF	# Current node value
+    
+    bge $a2, $t1, GPchildGreater
+    
+    	andi $t2, $t0, 0xFF00000	
+    	srl $t2, $t2, 24	# Left index
+    
+    	bne $t2, 255, GPLeftNot255
+    	
+    		# Return -1, x
+    		li $v0, -1
+    		j GPreturn
+    	
+    	GPLeftNot255:
+    	bne $t2, $a3, GPLeftElse
+    		
+    		# Return current index, 0
+    		move $v0, $a1
+    		li $v1, 0
+    		j GPreturn
+    
+    	GPLeftElse:
+    	
+    		# Otherwise recursive call
+    		move $a1, $t2
+    		jal get_parent
+    		j GPreturn
+    
+GPchildGreater:
+    
+    	andi $t2, $t0, 0xFF0000
+    	srl $t2, $t2, 16
+    	
+    	bne $t2, 255, GPRightNot255
+    	
+    		# Return -1, x
+    		li $v0, -1
+    		j GPreturn
+    		
+    	GPRightNot255:
+    	bne $t2, $a3, GPRightElse
+    	
+    		move $v0, $a1
+    		li $v1, 1
+    		j GPreturn
+    		
+    	GPRightElse:
+    	
+    		move $a1, $t2
+    		jal get_parent
+    		j GPreturn
+    
+GPreturn:
+    pop($ra)
     jr $ra
-
+##############################
 find_min:
 	push($ra)
 	
@@ -514,12 +587,100 @@ FMrecursive:
 		jr $ra				
 #############################################
 delete_node:
-    #Define your code here
-    ############################################
-    # DELETE THIS CODE. Only here to allow main program to run without fully implementing the function
-    li $v0, -100
-    ###########################################
+    
+    # $a0 - nodes array -> 	$s0
+    # $a1 - rootIndex -> 	$s1
+    # $a2 - deleteIndex	->	$s2
+    # $a3 - flags array ->	$s3
+    # $sp ($t0) - maxSize ->$s4
+    
+    lw $t0, ($sp)
+    
+    push($ra)
+    push($s0)
+    push($s1)
+    push($s2)
+    push($s3)
+    
+    move $s0, $a0
+    move $s1, $a1
+    move $s2, $a2
+    move $s3, $a3
+    move $s4, $t0
+    
+    andi $s1, $s1, 0xFF
+    andi $s2, $s2, 0xFF
+    
+    blt $s1, $s4, DNreturn0
+    blt $s2, $s4, DNreturn0
+    
+    move $a0, $s3
+    move $a1, $s1
+    jal nodeExists
+    beqz $v0, DNreturn0
+    
+    move $a0, $s3
+    move $a1, $s2
+    jal nodeExists
+    beqz $v0, DNreturn0
+    
+    
+    
+    
+DNreturn0:
+	li $v0, 0
+DNreturn:
+	pop($s3)
+	pop($s2)
+	pop($s1)
+	pop($s0)
+    pop($ra)
     jr $ra
+##############################
+nodeExists:
+	# $a0 - has the pointer to the flag array
+	# $a1 - has the index to check
+	push($s0)
+	push($s1)
+	
+	andi $s0, $a1, 7	# Remainder div / 8
+	srl $s1, $a1, 3		# Quotient div / 8
+	
+	add $s1, $s1, $a0
+	lb $s1, ($s1)
+	
+	srlv $s1, $s1, $s0
+	andi $v0, $s1, 1
+	
+	pop($s1)
+	pop($s0)
+	jr $ra
+##############################
+isLeaf:
+	# $a0 - node to check
+	# Return true if it is a leaf, false otherwise
+	push($s0)
+	
+	# Check left
+	# Branch to check right
+	
+	andi $s0, $a0, 0xFF00000
+	srl $s0, $s0, 24
+	bne $s0, 0xFF, isNotLeaf
+	
+	andi $s0, $a0, 0xFF0000
+	srl $s0, $s0, 16
+	bne $s0, 0xFF, isNotLeaf
+	
+	li $v0, 1
+	j isLeafReturn
+	
+isNotLeaf:
+	li $v0, 0
+isLeafReturn:
+	pop($s0)
+	jr $ra
+
 
 ##############################
 # EXTRA CREDIT FUNCTION
