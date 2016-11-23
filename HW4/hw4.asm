@@ -51,6 +51,14 @@
 	pop($t0)
 .end_macro
 
+.macro set_node(%base_addr, %arr_indx, %value)
+	push($t0)
+	sll $t0, %arr_indx, 2
+	addu $t0, $t0, %base_addr
+	sw %value, ($t0)
+	pop($t0)
+.end_macro
+
 ##############################
 # PART 1 FUNCTIONS
 ##############################
@@ -540,12 +548,14 @@ GPchildGreater:
     	GPRightNot255:
     	bne $t2, $a3, GPRightElse
     	
+    		# Return current index, 1
     		move $v0, $a1
     		li $v1, 1
     		j GPreturn
     		
     	GPRightElse:
-    	
+    		
+    		# Otherwise recursive call
     		move $a1, $t2
     		jal get_parent
     		j GPreturn
@@ -593,6 +603,8 @@ delete_node:
     # $a2 - deleteIndex	->	$s2
     # $a3 - flags array ->	$s3
     # $sp ($t0) - maxSize ->$s4
+    # delete node data ->	$s5
+    # Child index ->		$s6
     
     lw $t0, ($sp)
     
@@ -601,6 +613,10 @@ delete_node:
     push($s1)
     push($s2)
     push($s3)
+    push($s4)
+    push($s5)
+    push($s6)
+    push($s7)
     
     move $s0, $a0
     move $s1, $a1
@@ -624,12 +640,224 @@ delete_node:
     jal nodeExists
     beqz $v0, DNreturn0
     
+    get_node($s0, $s2)
+    move $a0, $v0
+    move $s5, $v0
+    jal isLeaf
     
+    beq $v0, 0, DNNotLeaf
     
-    
+    	move $a0, $s3
+    	move $a1, $s2
+    	li $a2, 0
+    	move $a3, $s4
+    	jal set_flag
+    	
+    	bne $s2, $s1, DN0
+			
+			li $v0, 1
+			j DNreturn0
+			
+		DN0:
+
+		move $a0, $s0
+		move $a1, $s1
+		andi $a2, $s5, 0xFFFF
+		move $a3, $s2
+		jal get_parent
+		
+		move $t1, $v0					# Parent index
+		get_node($s0, $t1)				# Load the parent node
+		
+		beq $v1, 1, DN1
+		
+			andi $t0, $v0, 0xFFFFFF		# Delete the left index
+			ori $t0, $v0, 0xFF000000	# Set the left index to 255
+			set_node($s0, $t1, $t0)
+			j DN2
+		
+		DN1:
+		
+			andi $t0, $v0, 0xFF00FFFF	# Delete the right index
+			ori $t0, $v0, 0xFF0000		# Set the right index to 255
+			set_node($s0, $t1, $t0)
+		DN2:
+			
+		li $v0, 1
+		j DNreturn
+
+DNNotLeaf:
+	
+	move $a0, $s5
+	jal numChildren
+	
+	bne $v0, 1, DNNotHasOneChild
+
+		andi $t0, $s5, 0xFF000000
+		srl $t0, $t0, 24
+		
+		beq $t0, 255, DNHasRightChildOnly
+		
+			move $s6, $t0
+			j DNskip0
+			
+		DNHasRightChildOnly:	
+		
+			andi $t1, $s5, 0xFF0000
+			srl $t1, $t1, 16
+			move $s6, $t1
+			
+		DNskip0:
+		
+		bne $s2, $s1, DNskip1
+		
+			get_node($s0, $s6)
+			set_node($s0, $s2, $v0)
+			
+			move $a0, $s3
+			move $a1, $s6
+			li $a2, 0
+			move $a3, $s4
+			jal set_flag
+			
+			li $v0, 1
+			j DNreturn
+		
+		DNskip1:		
+		
+		move $a0, $s0
+		move $a1, $s1
+		andi $a2, $s5, 0xFFFF
+		move $a3, $s2
+		jal get_parent
+		
+		move $t0, $v0	# Parent index
+		
+		beq $v1, 1, DN4
+		# Left
+			get_node($s0, $t0)
+			andi $t2, $v0, 0xFFFFFF
+			sll $t1, $s6, 24
+			or $t2, $t2, $t1
+			set_node($s0, $t0, $t2)
+		
+		j DN5
+		DN4:
+		# Right
+			get_node($s0, $t0)
+			andi $t2, $v0, 0xFF00FFFF
+			sll $t1, $s6, 16
+			or $t2, $t2, $t1
+			set_node($s0, $t0, $t2)
+		
+		DN5:
+		
+		move $a0, $s0
+		move $a1, $s2
+		li $a2, 0
+		move $a3, $s4
+		jal set_flag
+		
+		li $v0, 1
+		j DNreturn
+			
+DNNotHasOneChild:
+	
+	move $a0, $s0
+	andi $a1, $s5, 0xFF0000
+	srl $a1, $a1, 16
+	jal find_min
+	
+	move $s7, $v0		# Min index
+	move $t1, $v1		# min is leaf
+	
+	get_node($s0, $s7)
+	move $t2, $v0		# Data stored at min index
+	
+	move $a0, $s0
+	move $a1, $s2
+	andi $a2, $t2, 0xFFFF
+	move $a3, $s7
+	
+	push($t0)
+	push($t1)
+	push($t2)
+	jal get_parent
+	pop($t2)
+	pop($t1)
+	pop($t0)
+	
+	move $t3, $v0		# parent index
+	move $t4, $v1		# leftOrRight
+	
+	bnez $t1, DN6		# If it is a leaf
+	
+		get_node($s0, $t3)
+		
+		beq $t4, 1, DN8	# If it is left
+			
+			ori $v0, $v0, 0xFF000000
+			set_node($s0, $t3, $v0)
+			
+		j DN7
+		DN8:			# If it is right
+		
+			ori $v0, $v0, 0xFF0000
+			set_node($s0, $t3, $v0)
+		
+		j DN7
+	DN6:				# If it is not a leaf
+	
+		get_node($s0, $t3)
+		move $t5, $v0	# Parent node
+		
+		get_node($s0, $s7)
+		andi $t6, $v0, 0xFF0000 # Min right already shifted
+		
+		beq $t4, 1, DN9	# If it is left
+	
+			sll $t1, $t6, 2
+			andi $t5, $t5, 0xFFFFFF	# Erase left reference
+			and $t5, $t5, $t1		# Set left reference
+			set_node($s0, $t3, $t5)
+		
+		j DN7
+		DN9:			# Else if it is right
+	
+			andi $t5, $t5, 0xFF00FFFF
+			and $t5, $t5, $t6
+			set_node($s0, $t3, $t5)
+	
+	DN7:
+	
+	get_node($s0, $s2)
+	move $t0, $v0		# Delete node
+	
+	get_node($s0, $s7)
+	move $t1, $v0		# Min node
+	
+	andi $t0, $t0, 0xFFFF0000
+	andi $t1, $t1, 0xFFFF
+	and $t0, $t0, $t1
+	
+	set_node($s0, $s2, $t0)
+	
+	move $a0, $s3
+	move $a1, $s7
+	li $a2, 0
+	move $a3, $s4
+	jal set_flag
+	
+	li $v0, 1
+	j DNreturn
+	
 DNreturn0:
 	li $v0, 0
 DNreturn:
+	pop($s7)
+	pop($s6)
+	pop($s5)
+	pop($s4)
 	pop($s3)
 	pop($s2)
 	pop($s1)
@@ -680,8 +908,24 @@ isNotLeaf:
 isLeafReturn:
 	pop($s0)
 	jr $ra
-
-
+##############################
+numChildren:
+	# $a0 - node to check
+	push($s0)
+	li $v0, 0
+	
+	andi $s0, $a0, 0xFF00000
+	srl $s0, $s0, 24
+	beq $s0, 255, NM0
+	inc($v0)
+NM0:
+	andi $s0, $a0, 0xFF0000
+	srl $s0, $s0, 16
+	beq $s0, 255, NM1
+	inc($v0)
+NM1:
+	pop($s0)
+	jr $ra
 ##############################
 # EXTRA CREDIT FUNCTION
 ##############################
