@@ -473,7 +473,7 @@ loop3exit:
 	pop($s0)
 	pop($ra)
     
-    li $v0, 1
+    li $v0, 0
     jr $ra
     
 loadmapfail:
@@ -616,7 +616,7 @@ initloop:
     li $t3, 0xB0		# Set yellow background
     sll $t3, $t3, 8		# Shift it over
     lh $t1, ($t0)		# Load the current configuration
-    andi $t1, $t1, 0xFF
+    andi $t1, $t1, 0xFFF
     or $t1, $t1, $t3	# Set the yellow background
     sh $t1, ($t0)		# Store the tile back
     
@@ -634,7 +634,7 @@ set_cell:
     move $t0, $a1
     move $t2, $a2
     move $t3, $a3
-    lw $t4, -4($sp)
+    lw $t4, 4($sp)
     
     bltz  $t0, setcellfail
     bgt $t0, 9, setcellfail
